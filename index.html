@@ -357,6 +357,8 @@ footer{text-align:center; padding:26px; font-size:11px; color:#9AA0B0;}
             <form class="form-grid" id="formRimPurchase">
               <div class="field"><label>Date</label><input type="date" name="date" required></div>
               <div class="field"><label>Category</label><select name="category" id="rpCategory"></select></div>
+              <div class="field" id="rpOtherCategoryWrap" style="display:none;"><label>Specify item name</label><input type="text" id="rpOtherCategory" placeholder="e.g. Chart Paper"></div>
+              <div class="field" id="rpOtherUnitWrap" style="display:none;"><label>Unit</label><input type="text" id="rpOtherUnit" placeholder="e.g. Packets"></div>
               <div class="field"><label>Wing (optional)</label><select name="wing" id="rpWing"></select></div>
               <div class="field"><label>Quantity</label><input type="number" name="qty" min="1" step="any" required></div>
               <div class="field"><label>Rate / unit (Rs.)</label><input type="number" name="rate" min="0" required></div>
@@ -393,6 +395,7 @@ footer{text-align:center; padding:26px; font-size:11px; color:#9AA0B0;}
               <div class="field"><label>Date</label><input type="date" name="date" required></div>
               <div class="field"><label>Wing</label><select name="wing" id="rcFormWing"></select></div>
               <div class="field"><label>Category</label><select name="category" id="rcFormCategory"></select></div>
+              <div class="field" id="rcOtherCategoryWrap" style="display:none;"><label>Specify category</label><input type="text" id="rcOtherCategory" placeholder="e.g. Annual Function Cards"></div>
               <div class="field"><label>Sheets used</label><input type="number" name="sheets" min="1" required></div>
               <div class="field"><button class="btn" type="submit">Add entry</button></div>
             </form>
@@ -567,10 +570,10 @@ const WING_COLORS = ['#4C6EF5','#22B573','#FF9F43','#8B5CF6','#14B8A6','#FF5C7C'
 const PAPER_CATEGORIES = [
   "Coordination pages","Evaluation pages","Breakups / SOW","D. Lesson Planner","Worksheets",
   "Result cards / Award lists","Admission / Registration","Date Sheet / Block syllabus","Question papers",
-  "Roll No. slips / Board affairs","Gate pass / All Performas","Misc"
+  "Roll No. slips / Board affairs","Gate pass / All Performas","Misc","Other"
 ];
 
-const RIM_CATEGORIES = ["Rim","Loose Sheets","Photocopy Sheet A4","Photocopy Sheet A6"];
+const RIM_CATEGORIES = ["Rim","Loose Sheets","Photocopy Sheet A4","Photocopy Sheet A6","Other"];
 const RIM_UNITS = {"Rim":"Reams","Loose Sheets":"Sheets","Photocopy Sheet A4":"Sheets","Photocopy Sheet A6":"Sheets"};
 
 const COLOR_SET_STD = ["Blue","Black","Red","Green"];
@@ -1161,8 +1164,15 @@ function deleteStatConsEntry(id){
   deleteEntryFromBackend('stat', id);
 }
 
+function safeRender(fn){
+  try{ fn(); }catch(err){ console.error('Render error in ' + fn.name + ':', err); }
+}
 function renderAll(){
-  renderOverview(); renderRimPurchase(); renderRimConsumption(); renderStatPurchase(); renderStatConsumption();
+  safeRender(renderOverview);
+  safeRender(renderRimPurchase);
+  safeRender(renderRimConsumption);
+  safeRender(renderStatPurchase);
+  safeRender(renderStatConsumption);
 }
 
 
@@ -1213,8 +1223,16 @@ dashMonthSelect.addEventListener('change', ()=>{ dashMonth = MONTHS.indexOf(dash
    FORM SETUP
    ========================================================= */
 populateSelect(document.getElementById('rpCategory'), RIM_CATEGORIES);
+document.getElementById('rpCategory').addEventListener('change', e=>{
+  const isOther = e.target.value === 'Other';
+  document.getElementById('rpOtherCategoryWrap').style.display = isOther ? '' : 'none';
+  document.getElementById('rpOtherUnitWrap').style.display = isOther ? '' : 'none';
+});
 populateSelect(document.getElementById('rpWing'), WINGS, 'Central / Unassigned');
 populateSelect(document.getElementById('rcFormCategory'), PAPER_CATEGORIES);
+document.getElementById('rcFormCategory').addEventListener('change', e=>{
+  document.getElementById('rcOtherCategoryWrap').style.display = (e.target.value === 'Other') ? '' : 'none';
+});
 populateSelect(document.getElementById('rcFormWing'), WINGS);
 populateSelect(document.getElementById('spItem'), STATIONERY_ITEMS.map(i=>i.name));
 populateSelect(document.getElementById('spWing'), WINGS, 'Central / Unassigned');
@@ -1227,14 +1245,21 @@ updateSpItemFields(); updateScItemFields();
 document.getElementById('formRimPurchase').addEventListener('submit', e=>{
   e.preventDefault();
   const f = new FormData(e.target);
-  const category = f.get('category');
+  let category = f.get('category');
+  let unit = RIM_UNITS[category];
+  if(category === 'Other'){
+    category = (document.getElementById('rpOtherCategory').value || '').trim() || 'Other';
+    unit = (document.getElementById('rpOtherUnit').value || '').trim() || 'Units';
+  }
   const fileInput = document.getElementById('rpBill');
   const file = fileInput.files[0];
   function pushRecord(billData){
     const rec = {id:newId(), month:rpMonth, date:f.get('date'), category, wing:f.get('wing'),
-      qty:Number(f.get('qty')), unit:RIM_UNITS[category], rate:Number(f.get('rate')), ref:f.get('ref'), bill:billData||''};
+      qty:Number(f.get('qty')), unit:unit, rate:Number(f.get('rate')), ref:f.get('ref'), bill:billData||''};
     rimPurchases.push(rec);
     e.target.reset();
+    document.getElementById('rpOtherCategoryWrap').style.display = 'none';
+    document.getElementById('rpOtherUnitWrap').style.display = 'none';
     renderRimPurchase(); renderOverview();
     saveEntryToBackend('rim', rec, {
       ID:rec.id, Type:'Purchase', Month:rec.month, Date:rec.date, Category:rec.category,
@@ -1254,9 +1279,14 @@ document.getElementById('formRimConsumption').addEventListener('submit', e=>{
   e.preventDefault();
   const f = new FormData(e.target);
   const wing = f.get('wing');
-  const rec = {id:newId(), month:rcMonth, wing, category:f.get('category'), sheets:Number(f.get('sheets')), date:f.get('date')};
+  let category = f.get('category');
+  if(category === 'Other'){
+    category = (document.getElementById('rcOtherCategory').value || '').trim() || 'Other';
+  }
+  const rec = {id:newId(), month:rcMonth, wing, category, sheets:Number(f.get('sheets')), date:f.get('date')};
   rimConsumption.push(rec);
   e.target.reset();
+  document.getElementById('rcOtherCategoryWrap').style.display = 'none';
   // jump the display to the wing the entry was just filed under
   rcWing = wing;
   renderRimConsumption(); renderOverview();
