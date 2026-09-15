@@ -613,6 +613,72 @@ let rimPurchases = [];      // {month, date, category, wing, qty, unit, rate, re
 let statPurchases = [];     // {month, date, item, color, size, wing, qty, unit, rate, supplier}
 let statConsumption = [];   // {month, wing, item, color, qty, note}
 
+/* =========================================================
+   GOOGLE DRIVE BACKEND SYNC
+   Paste your deployed Apps Script Web App URL below.
+   Every entry you add here will auto-save to your Google Sheets,
+   and bills will auto-upload to your "Bill Record" Drive folder.
+   ========================================================= */
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwa4BQwtvu1i-mYmsL5KtRFIDTwASnWdbqDvaAe5McSJPaWLhu3NGMx1IEFTh-Si6ID/exec';
+const backendActive = () => BACKEND_URL && BACKEND_URL.indexOf('PASTE_') !== 0;
+
+function getPasscode(){
+  let code = sessionStorage.getItem('apsacs_edit_code');
+  if(!code){
+    code = prompt('Entry save karne ke liye admin code darj karen:') || '';
+    if(code) sessionStorage.setItem('apsacs_edit_code', code);
+  }
+  return code;
+}
+
+function saveEntryToBackend(target, localRec, sheetRecord, billData, billName, onBillSaved){
+  if(!backendActive()) return;
+  fetch(BACKEND_URL, {
+    method:'POST',
+    body: JSON.stringify({ action:'add', target, record: sheetRecord, bill: billData||'', billName: billName||'', passcode: getPasscode() })
+  }).then(r=>r.json()).then(res=>{
+    if(res && res.ok){
+      if(res.billUrl && onBillSaved) onBillSaved(res.billUrl);
+    } else {
+      sessionStorage.removeItem('apsacs_edit_code');
+      alert('Yeh entry sirf iss browser mein dikh rahi hai, Drive mein save nahi hui — code ghalat tha. Dobara try karen.');
+    }
+  }).catch(err=> console.error('Backend save failed:', err));
+}
+function deleteEntryFromBackend(target, id){
+  if(!backendActive()) return;
+  fetch(BACKEND_URL, { method:'POST', body: JSON.stringify({ action:'delete', target, id, passcode: getPasscode() }) })
+    .then(r=>r.json()).then(res=>{
+      if(!(res && res.ok)){
+        sessionStorage.removeItem('apsacs_edit_code');
+        alert('Delete Drive Sheet mein nahi ho saka — code ghalat tha.');
+      }
+    })
+    .catch(err=> console.error('Backend delete failed:', err));
+}
+function loadFromBackend(){
+  if(!backendActive()) return;
+  fetch(BACKEND_URL).then(r=>r.json()).then(data=>{
+    if(!data || !data.ok) return;
+    rimPurchases = data.rim.filter(r=>r.Type==='Purchase').map(r=>({
+      id:r.ID, month:Number(r.Month), date:r.Date, category:r.Category, wing:r.Wing,
+      qty:Number(r.Qty), unit:r.Unit, rate:Number(r.Rate), ref:r.Ref, bill:r.BillURL||''
+    }));
+    rimConsumption = data.rim.filter(r=>r.Type==='Consumption').map(r=>({
+      id:r.ID, month:Number(r.Month), date:r.Date, category:r.Category, wing:r.Wing, sheets:Number(r.Qty)
+    }));
+    statPurchases = data.stat.filter(r=>r.Type==='Purchase').map(r=>({
+      id:r.ID, month:Number(r.Month), date:r.Date, item:r.Item, color:r.Color, size:r.Size, wing:r.Wing,
+      qty:Number(r.Qty), unit:r.Unit, rate:Number(r.Rate), supplier:r.Supplier, bill:r.BillURL||''
+    }));
+    statConsumption = data.stat.filter(r=>r.Type==='Consumption').map(r=>({
+      id:r.ID, month:Number(r.Month), date:r.Date, item:r.Item, color:r.Color, wing:r.Wing,
+      qty:Number(r.Qty), issuedTo:r.IssuedTo, note:r.Note
+    }));
+    renderAll();
+  }).catch(err=> console.error('Backend load failed:', err));
+}
+
 // Seeded with January's verified register totals (from the reconciled Excel file)
 let __uid = 0;
 function newId(){ return 'r' + (++__uid) + '_' + Date.now().toString(36); }
@@ -1084,6 +1150,7 @@ function deleteRimEntry(id){
   if(!confirm(`Delete this entry?\n\n${rec.wing} — ${rec.category}\n${fmt(rec.sheets)} sheets${rec.date?' on '+rec.date:''}`)) return;
   rimConsumption = rimConsumption.filter(r=>r.id!==id);
   renderRimConsumption(); renderOverview();
+  deleteEntryFromBackend('rim', id);
 }
 function deleteStatConsEntry(id){
   const rec = statConsumption.find(r=>r.id===id);
@@ -1091,11 +1158,13 @@ function deleteStatConsEntry(id){
   if(!confirm(`Delete this entry?\n\n${rec.item}${rec.color?' ('+rec.color+')':''} — ${rec.wing}\n${fmt(rec.qty)} issued${rec.issuedTo?' to '+rec.issuedTo:''}${rec.date?' on '+rec.date:''}`)) return;
   statConsumption = statConsumption.filter(r=>r.id!==id);
   renderStatConsumption(); renderOverview();
+  deleteEntryFromBackend('stat', id);
 }
 
 function renderAll(){
   renderOverview(); renderRimPurchase(); renderRimConsumption(); renderStatPurchase(); renderStatConsumption();
 }
+
 
 /* =========================================================
    NAVIGATION
@@ -1162,10 +1231,15 @@ document.getElementById('formRimPurchase').addEventListener('submit', e=>{
   const fileInput = document.getElementById('rpBill');
   const file = fileInput.files[0];
   function pushRecord(billData){
-    rimPurchases.push({month:rpMonth, date:f.get('date'), category, wing:f.get('wing'),
-      qty:Number(f.get('qty')), unit:RIM_UNITS[category], rate:Number(f.get('rate')), ref:f.get('ref'), bill:billData||''});
+    const rec = {id:newId(), month:rpMonth, date:f.get('date'), category, wing:f.get('wing'),
+      qty:Number(f.get('qty')), unit:RIM_UNITS[category], rate:Number(f.get('rate')), ref:f.get('ref'), bill:billData||''};
+    rimPurchases.push(rec);
     e.target.reset();
     renderRimPurchase(); renderOverview();
+    saveEntryToBackend('rim', rec, {
+      ID:rec.id, Type:'Purchase', Month:rec.month, Date:rec.date, Category:rec.category,
+      Wing:rec.wing, Qty:rec.qty, Unit:rec.unit, Rate:rec.rate, Ref:rec.ref
+    }, billData, 'rim-purchase-'+rec.id, refreshedBill => { rec.bill = refreshedBill; renderRimPurchase(); });
   }
   if(file){
     const reader = new FileReader();
@@ -1180,11 +1254,16 @@ document.getElementById('formRimConsumption').addEventListener('submit', e=>{
   e.preventDefault();
   const f = new FormData(e.target);
   const wing = f.get('wing');
-  rimConsumption.push({id:newId(), month:rcMonth, wing, category:f.get('category'), sheets:Number(f.get('sheets')), date:f.get('date')});
+  const rec = {id:newId(), month:rcMonth, wing, category:f.get('category'), sheets:Number(f.get('sheets')), date:f.get('date')};
+  rimConsumption.push(rec);
   e.target.reset();
   // jump the display to the wing the entry was just filed under
   rcWing = wing;
   renderRimConsumption(); renderOverview();
+  saveEntryToBackend('rim', rec, {
+    ID:rec.id, Type:'Consumption', Month:rec.month, Date:rec.date, Category:rec.category,
+    Wing:rec.wing, Qty:rec.sheets, Unit:'sheets', Rate:'', Ref:''
+  });
 });
 
 document.getElementById('formStatPurchase').addEventListener('submit', e=>{
@@ -1193,10 +1272,15 @@ document.getElementById('formStatPurchase').addEventListener('submit', e=>{
   const fileInput = document.getElementById('spBill');
   const file = fileInput.files[0];
   function pushRecord(billData){
-    statPurchases.push({id:newId(), month:spMonth, date:f.get('date'), item:f.get('item'), color:f.get('color')||'', size:f.get('size')||'',
-      wing:f.get('wing'), qty:Number(f.get('qty')), unit:f.get('unit'), rate:Number(f.get('rate')), supplier:f.get('supplier'), bill:billData||''});
+    const rec = {id:newId(), month:spMonth, date:f.get('date'), item:f.get('item'), color:f.get('color')||'', size:f.get('size')||'',
+      wing:f.get('wing'), qty:Number(f.get('qty')), unit:f.get('unit'), rate:Number(f.get('rate')), supplier:f.get('supplier'), bill:billData||''};
+    statPurchases.push(rec);
     e.target.reset(); updateSpItemFields();
     renderStatPurchase(); renderOverview();
+    saveEntryToBackend('stat', rec, {
+      ID:rec.id, Type:'Purchase', Month:rec.month, Date:rec.date, Item:rec.item, Color:rec.color, Size:rec.size,
+      Wing:rec.wing, Qty:rec.qty, Unit:rec.unit, Rate:rec.rate, Supplier:rec.supplier, IssuedTo:'', Note:''
+    }, billData, 'stat-purchase-'+rec.id, refreshedBill => { rec.bill = refreshedBill; renderStatPurchase(); });
   }
   if(file){
     const reader = new FileReader();
@@ -1210,10 +1294,15 @@ document.getElementById('formStatPurchase').addEventListener('submit', e=>{
 document.getElementById('formStatConsumption').addEventListener('submit', e=>{
   e.preventDefault();
   const f = new FormData(e.target);
-  statConsumption.push({id:newId(), month:scMonth, wing:f.get('wing'), item:f.get('item'), color:f.get('color')||'',
-    qty:Number(f.get('qty')), date:f.get('date'), issuedTo:f.get('issuedTo'), note:f.get('note')});
+  const rec = {id:newId(), month:scMonth, wing:f.get('wing'), item:f.get('item'), color:f.get('color')||'',
+    qty:Number(f.get('qty')), date:f.get('date'), issuedTo:f.get('issuedTo'), note:f.get('note')};
+  statConsumption.push(rec);
   e.target.reset(); updateScItemFields();
   renderStatConsumption(); renderOverview();
+  saveEntryToBackend('stat', rec, {
+    ID:rec.id, Type:'Consumption', Month:rec.month, Date:rec.date, Item:rec.item, Color:rec.color, Size:'',
+    Wing:rec.wing, Qty:rec.qty, Unit:'', Rate:'', Supplier:'', IssuedTo:rec.issuedTo, Note:rec.note
+  });
 });
 
 /* =========================================================
@@ -1420,6 +1509,7 @@ function exportAllCSV(){
 
 /* Initial paint */
 renderAll();
+loadFromBackend();
 
 </script>
 </body>
