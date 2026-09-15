@@ -1000,6 +1000,17 @@ function renderOverview(){
 }
 
 function renderOverviewCharts(paperRows, statRows){
+  if(typeof Chart === 'undefined'){
+    // Chart.js didn't load (network/CDN blocked) — don't let that break anything else.
+    ['paperBarChart','statBarChart'].forEach(id=>{
+      const c = document.getElementById(id);
+      if(c) c.parentElement.innerHTML = '<div class="empty-state"><p>Chart library load nahi ho saki (internet/CDN check karen). Baqi sab kaam kar raha hai.</p></div>';
+    });
+    const wrap0 = document.getElementById('overallDoughnutWrap');
+    if(wrap0) wrap0.innerHTML = '<div class="empty-state"><p>Chart library load nahi ho saki.</p></div>';
+    return;
+  }
+  try{
   const ctx1 = document.getElementById('paperBarChart');
   if(paperBarChart) paperBarChart.destroy();
   paperBarChart = new Chart(ctx1, {
@@ -1035,6 +1046,9 @@ function renderOverviewCharts(paperRows, statRows){
       plugins:{ legend:{position:'bottom', labels:{boxWidth:9, font:{size:9.5}, padding:8}},
         tooltip:{callbacks:{label:c=>c.label+': '+fmt(c.raw)+' reams'}} } }
   });
+  }catch(err){
+    console.error('Chart render failed (data and Drive save are unaffected):', err);
+  }
 }
 
 /* =========================================================
@@ -1193,16 +1207,16 @@ function deleteRimEntry(id){
   if(!rec) return;
   if(!confirm(`Delete this entry?\n\n${rec.wing} — ${rec.category}\n${fmt(rec.sheets)} sheets${rec.date?' on '+rec.date:''}`)) return;
   rimConsumption = rimConsumption.filter(r=>r.id!==id);
-  renderRimConsumption(); renderOverview();
   deleteEntryFromBackend('rim', id);
+  renderRimConsumption(); renderOverview();
 }
 function deleteStatConsEntry(id){
   const rec = statConsumption.find(r=>r.id===id);
   if(!rec) return;
   if(!confirm(`Delete this entry?\n\n${rec.item}${rec.color?' ('+rec.color+')':''} — ${rec.wing}\n${fmt(rec.qty)} issued${rec.issuedTo?' to '+rec.issuedTo:''}${rec.date?' on '+rec.date:''}`)) return;
   statConsumption = statConsumption.filter(r=>r.id!==id);
-  renderStatConsumption(); renderOverview();
   deleteEntryFromBackend('stat', id);
+  renderStatConsumption(); renderOverview();
 }
 
 function safeRender(fn){
@@ -1301,11 +1315,11 @@ document.getElementById('formRimPurchase').addEventListener('submit', e=>{
     e.target.reset();
     document.getElementById('rpOtherCategoryWrap').style.display = 'none';
     document.getElementById('rpOtherUnitWrap').style.display = 'none';
-    renderRimPurchase(); renderOverview();
     saveEntryToBackend('rim', rec, {
       ID:rec.id, Type:'Purchase', Month:rec.month, Date:rec.date, Category:rec.category,
       Wing:rec.wing, Qty:rec.qty, Unit:rec.unit, Rate:rec.rate, Ref:rec.ref
     }, billData, 'rim-purchase-'+rec.id, refreshedBill => { rec.bill = refreshedBill; renderRimPurchase(); });
+    renderRimPurchase(); renderOverview();
   }
   if(file){
     const reader = new FileReader();
@@ -1330,11 +1344,11 @@ document.getElementById('formRimConsumption').addEventListener('submit', e=>{
   document.getElementById('rcOtherCategoryWrap').style.display = 'none';
   // jump the display to the wing the entry was just filed under
   rcWing = wing;
-  renderRimConsumption(); renderOverview();
   saveEntryToBackend('rim', rec, {
     ID:rec.id, Type:'Consumption', Month:rec.month, Date:rec.date, Category:rec.category,
     Wing:rec.wing, Qty:rec.sheets, Unit:'sheets', Rate:'', Ref:''
   });
+  renderRimConsumption(); renderOverview();
 });
 
 document.getElementById('formStatPurchase').addEventListener('submit', e=>{
@@ -1347,11 +1361,11 @@ document.getElementById('formStatPurchase').addEventListener('submit', e=>{
       wing:f.get('wing'), qty:Number(f.get('qty')), unit:f.get('unit'), rate:Number(f.get('rate')), supplier:f.get('supplier'), bill:billData||''};
     statPurchases.push(rec);
     e.target.reset(); updateSpItemFields();
-    renderStatPurchase(); renderOverview();
     saveEntryToBackend('stat', rec, {
       ID:rec.id, Type:'Purchase', Month:rec.month, Date:rec.date, Item:rec.item, Color:rec.color, Size:rec.size,
       Wing:rec.wing, Qty:rec.qty, Unit:rec.unit, Rate:rec.rate, Supplier:rec.supplier, IssuedTo:'', Note:''
     }, billData, 'stat-purchase-'+rec.id, refreshedBill => { rec.bill = refreshedBill; renderStatPurchase(); });
+    renderStatPurchase(); renderOverview();
   }
   if(file){
     const reader = new FileReader();
@@ -1369,11 +1383,11 @@ document.getElementById('formStatConsumption').addEventListener('submit', e=>{
     qty:Number(f.get('qty')), date:f.get('date'), issuedTo:f.get('issuedTo'), note:f.get('note')};
   statConsumption.push(rec);
   e.target.reset(); updateScItemFields();
-  renderStatConsumption(); renderOverview();
   saveEntryToBackend('stat', rec, {
     ID:rec.id, Type:'Consumption', Month:rec.month, Date:rec.date, Item:rec.item, Color:rec.color, Size:'',
     Wing:rec.wing, Qty:rec.qty, Unit:'', Rate:'', Supplier:'', IssuedTo:rec.issuedTo, Note:rec.note
   });
+  renderStatConsumption(); renderOverview();
 });
 
 /* =========================================================
