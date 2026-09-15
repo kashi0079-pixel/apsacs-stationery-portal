@@ -263,6 +263,7 @@ footer{text-align:center; padding:26px; font-size:11px; color:#9AA0B0;}
       </div>
     </div>
 
+    <div id="connBanner" style="display:none; padding:10px 26px; font-size:12.5px; font-weight:600; text-align:center;"></div>
     <div class="content">
 
       <!-- ======================= OVERVIEW ======================= -->
@@ -634,35 +635,71 @@ function getPasscode(){
   return code;
 }
 
+function showConnBanner(kind, msg){
+  const el = document.getElementById('connBanner');
+  if(kind === 'hide'){ el.style.display='none'; return; }
+  el.style.display = 'block';
+  el.style.background = kind==='ok' ? '#E4F8EE' : (kind==='wait' ? '#FFF2E2' : '#FFE9EE');
+  el.style.color = kind==='ok' ? '#189A5F' : (kind==='wait' ? '#F5822A' : '#E6425F');
+  el.textContent = msg;
+  if(kind==='ok') setTimeout(()=>{ if(el.textContent===msg) el.style.display='none'; }, 4000);
+}
 function saveEntryToBackend(target, localRec, sheetRecord, billData, billName, onBillSaved){
   if(!backendActive()) return;
+  showConnBanner('wait', 'Drive par save ho raha hai…');
   fetch(BACKEND_URL, {
     method:'POST',
     body: JSON.stringify({ action:'add', target, record: sheetRecord, bill: billData||'', billName: billName||'', passcode: getPasscode() })
-  }).then(r=>r.json()).then(res=>{
+  }).then(r=>{
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(res=>{
     if(res && res.ok){
+      showConnBanner('ok', '✓ Drive par save ho gaya.');
       if(res.billUrl && onBillSaved) onBillSaved(res.billUrl);
     } else {
       sessionStorage.removeItem('apsacs_edit_code');
-      alert('Yeh entry sirf iss browser mein dikh rahi hai, Drive mein save nahi hui — code ghalat tha. Dobara try karen.');
+      const reason = (res && res.error) ? res.error : 'code ghalat tha ya backend ne reject kar diya';
+      showConnBanner('err', '✗ Drive mein save NAHI hui — ' + reason + '. Yeh entry sirf iss browser mein hai.');
+      alert('Yeh entry sirf iss browser mein dikh rahi hai, Drive mein save nahi hui.\n\nWajah: ' + reason);
     }
-  }).catch(err=> console.error('Backend save failed:', err));
+  }).catch(err=>{
+    console.error('Backend save failed:', err);
+    showConnBanner('err', '✗ Drive se connect nahi ho saka (' + err.message + '). Yeh entry sirf iss browser mein hai.');
+    alert('Backend (Google Apps Script) tak pohnch nahi payi.\n\nError: ' + err.message + '\n\nBrowser ka F12 → Console tab kholkar poori detail dekhi ja sakti hai.');
+  });
 }
 function deleteEntryFromBackend(target, id){
   if(!backendActive()) return;
   fetch(BACKEND_URL, { method:'POST', body: JSON.stringify({ action:'delete', target, id, passcode: getPasscode() }) })
-    .then(r=>r.json()).then(res=>{
+    .then(r=>{ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(res=>{
       if(!(res && res.ok)){
         sessionStorage.removeItem('apsacs_edit_code');
-        alert('Delete Drive Sheet mein nahi ho saka — code ghalat tha.');
+        const reason = (res && res.error) ? res.error : 'code ghalat tha ya backend ne reject kar diya';
+        showConnBanner('err', '✗ Delete Drive mein NAHI hui — ' + reason);
+        alert('Delete Drive Sheet mein nahi ho saka.\n\nWajah: ' + reason);
+      } else {
+        showConnBanner('ok', '✓ Delete Drive par bhi ho gaya.');
       }
     })
-    .catch(err=> console.error('Backend delete failed:', err));
+    .catch(err=>{
+      console.error('Backend delete failed:', err);
+      showConnBanner('err', '✗ Drive se connect nahi ho saka (' + err.message + ').');
+      alert('Delete backend tak nahi pohnchi.\n\nError: ' + err.message);
+    });
 }
 function loadFromBackend(){
   if(!backendActive()) return;
-  fetch(BACKEND_URL).then(r=>r.json()).then(data=>{
-    if(!data || !data.ok) return;
+  showConnBanner('wait', 'Google Sheet se data load ho raha hai…');
+  fetch(BACKEND_URL).then(r=>{
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(data=>{
+    if(!data || !data.ok){
+      showConnBanner('err', '✗ Backend ne data nahi bheja — ' + ((data&&data.error)||'sheet khali ya script mein masla ho sakta hai') + '. Filhal sirf local demo data dikh raha hai.');
+      return;
+    }
     rimPurchases = data.rim.filter(r=>r.Type==='Purchase').map(r=>({
       id:r.ID, month:Number(r.Month), date:r.Date, category:r.Category, wing:r.Wing,
       qty:Number(r.Qty), unit:r.Unit, rate:Number(r.Rate), ref:r.Ref, bill:r.BillURL||''
@@ -678,8 +715,12 @@ function loadFromBackend(){
       id:r.ID, month:Number(r.Month), date:r.Date, item:r.Item, color:r.Color, wing:r.Wing,
       qty:Number(r.Qty), issuedTo:r.IssuedTo, note:r.Note
     }));
+    showConnBanner('ok', '✓ Google Sheet se jud gaya — ' + (data.rim.length+data.stat.length) + ' entries mili.');
     renderAll();
-  }).catch(err=> console.error('Backend load failed:', err));
+  }).catch(err=>{
+    console.error('Backend load failed:', err);
+    showConnBanner('err', '✗ Google Drive se connect nahi ho saka (' + err.message + '). Sirf local demo data dikh raha hai — F12 → Console mein poori detail hai.');
+  });
 }
 
 // Seeded with January's verified register totals (from the reconciled Excel file)
