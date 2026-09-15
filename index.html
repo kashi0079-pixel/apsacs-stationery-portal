@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APSACS RYK City — Stationery &amp; Paper Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --font:'Plus Jakarta Sans', -apple-system, sans-serif;
+  --mono:'IBM Plex Mono', monospace;
+  --navy-1:#0E1730; --navy-2:#0A1226;
+  --indigo:#5B62F5; --indigo-dark:#4347D6;
+  --blue:#4C6EF5; --blue-bg:#EAEFFE;
+  --green:#22B573; --green-bg:#E4F8EE;
+  --orange:#FF9F43; --orange-bg:#FFF2E2;
+  --pink:#FF5C7C; --pink-bg:#FFE9EE;
+  --ink:#1B2140; --muted:#7C8299; --line:#EBEDF3;
+  --bg:#F4F5FA; --card:#FFFFFF;
+  --radius:12px;
+}
+html[data-theme="crimson"]{ --navy-1:#2C0E16; --navy-2:#1F0910; --indigo:#D6425F; --indigo-dark:#B22F49; }
+html[data-theme="forest"]{ --navy-1:#0E2318; --navy-2:#08160F; --indigo:#1E9E68; --indigo-dark:#157F51; }
+html[data-theme="slate"]{ --navy-1:#1B2432; --navy-2:#121924; --indigo:#4C8FB0; --indigo-dark:#376E8B; }
+html[data-theme="crimson"] .theme-dot[data-t="crimson"],
+html[data-theme="forest"] .theme-dot[data-t="forest"],
+html[data-theme="slate"] .theme-dot[data-t="slate"],
+html:not([data-theme]) .theme-dot[data-t="indigo"]{ border-color:var(--ink); }
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:var(--font); background:var(--bg); color:var(--ink); font-size:13.5px;}
+button{font-family:inherit; cursor:pointer; border:none; background:none;}
+select,input{font-family:inherit;}
+:focus-visible{outline:2px solid var(--indigo); outline-offset:1px;}
+
+.shell{display:flex; min-height:100vh;}
+
+/* ---------------- SIDEBAR ---------------- */
+.sidebar{
+  width:252px; flex-shrink:0; background:linear-gradient(180deg,var(--navy-1),var(--navy-2));
+  color:#C9CDE0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+  transition:width .2s ease; overflow:hidden;
+}
+.sidebar.collapsed{width:74px;}
+.brand{display:flex; align-items:center; gap:11px; padding:22px 20px 18px;}
+.crest{width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,var(--indigo),#8B8FFB);
+  display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:16px; flex-shrink:0;}
+.crest-logo{width:40px; height:40px; flex-shrink:0; object-fit:contain; background:#fff; border-radius:9px; padding:3px;}
+.brand .name{font-weight:700; font-size:14px; color:#fff; white-space:nowrap;}
+.brand .sub{font-size:10.5px; color:#8890AC; white-space:nowrap;}
+.sidebar.collapsed .brand .name, .sidebar.collapsed .brand .sub{display:none;}
+
+.nav{list-style:none; padding:6px 14px; flex:1; overflow-y:auto;}
+.nav-label{font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#5C6389; padding:16px 10px 7px; font-weight:700;}
+.sidebar.collapsed .nav-label{display:none;}
+.nav-item{display:flex; align-items:center; gap:12px; padding:10px 12px; margin-bottom:3px; border-radius:9px;
+  font-size:13px; font-weight:600; color:#AEB4D1; white-space:nowrap; overflow:hidden; transition:.15s;}
+.nav-item svg{width:17px; height:17px; flex-shrink:0;}
+.nav-item:hover{background:rgba(255,255,255,.06); color:#fff;}
+.nav-item.active{background:linear-gradient(135deg,var(--indigo),#7A7FF7); color:#fff; box-shadow:0 4px 14px rgba(91,98,245,.35);}
+.sidebar.collapsed .nav-item span{display:none;}
+
+.side-illustration{padding:16px 20px 20px; text-align:center;}
+.side-illustration svg{width:100%; max-width:150px; opacity:.9;}
+.sidebar.collapsed .side-illustration{display:none;}
+.collapse-toggle{margin:8px 14px 16px; background:rgba(255,255,255,.06); border-radius:9px; padding:9px;
+  display:flex; align-items:center; justify-content:center; gap:8px; color:#AEB4D1; font-size:11.5px; font-weight:600;}
+.collapse-toggle:hover{background:rgba(255,255,255,.12); color:#fff;}
+.collapse-toggle svg{width:14px; height:14px; transition:transform .2s;}
+.sidebar.collapsed .collapse-toggle svg{transform:rotate(180deg);}
+.sidebar.collapsed .collapse-toggle span{display:none;}
+
+/* ---------------- MAIN ---------------- */
+.main{flex:1; min-width:0; display:flex; flex-direction:column;}
+.topbar{background:var(--card); border-bottom:1px solid var(--line); padding:14px 26px;
+  display:flex; align-items:center; justify-content:space-between; gap:14px; position:sticky; top:0; z-index:6;}
+.topbar-left{display:flex; align-items:center; gap:14px;}
+.burger{width:34px; height:34px; border-radius:9px; background:#F4F5FA; display:flex; align-items:center; justify-content:center;}
+.burger svg{width:17px; height:17px; color:var(--ink);}
+.page-title{font-weight:700; font-size:16.5px;}
+.page-sub{font-size:11px; color:var(--muted); margin-top:1px;}
+.topbar-right{display:flex; align-items:center; gap:10px;}
+.select{border:1px solid var(--line); border-radius:9px; padding:8px 30px 8px 12px; font-size:12.5px; font-weight:600;
+  background:#fff; appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%237C8299'/></svg>");
+  background-repeat:no-repeat; background-position:right 12px center;}
+.theme-row{display:flex; gap:6px; padding-left:10px; border-left:1px solid var(--line);}
+.theme-dot{width:19px; height:19px; border-radius:50%; border:2px solid transparent; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
+.theme-dot.active{border-color:var(--ink);}
+.theme-dot[data-t="indigo"]{background:linear-gradient(135deg,#0E1730,#5B62F5);}
+.theme-dot[data-t="crimson"]{background:linear-gradient(135deg,#2C0E16,#D6425F);}
+.theme-dot[data-t="forest"]{background:linear-gradient(135deg,#0E2318,#1E9E68);}
+.theme-dot[data-t="slate"]{background:linear-gradient(135deg,#1B2432,#4C8FB0);}
+.avatar{width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--indigo),#8B8FFB); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12.5px;}
+
+.content{padding:24px 26px 60px; max-width:1400px; margin:0 auto; width:100%;}
+.view{display:none;} .view.active{display:block;}
+
+/* ---------------- KPI CARDS ---------------- */
+.kpi-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; margin-bottom:20px;}
+.kpi-card{border-radius:var(--radius); padding:18px 20px; display:flex; flex-direction:column; gap:10px; color:#fff; position:relative; overflow:hidden;}
+.kpi-card .icon{width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center;}
+.kpi-card .icon svg{width:19px; height:19px;}
+.kpi-card .label{font-size:11.5px; font-weight:600; opacity:.92;}
+.kpi-card .value{font-size:25px; font-weight:800; line-height:1;}
+.kpi-card .foot{font-size:10.5px; opacity:.85;}
+.kpi-card.blue{background:linear-gradient(135deg,#4C6EF5,#3D57D6);}
+.kpi-card.green{background:linear-gradient(135deg,#22B573,#189A5F);}
+.kpi-card.orange{background:linear-gradient(135deg,#FF9F43,#F5822A);}
+.kpi-card.pink{background:linear-gradient(135deg,#FF5C7C,#E6425F);}
+
+/* ---------------- PANELS ---------------- */
+.panel{background:var(--card); border-radius:var(--radius); border:1px solid var(--line); margin-bottom:20px;}
+.panel-head{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 20px; border-bottom:1px solid var(--line);}
+.panel-head h2{font-size:14.5px; font-weight:700;}
+.panel-head .meta{font-size:11px; color:var(--muted); font-weight:600;}
+.panel-body{padding:18px 20px 22px;}
+
+.two-col{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+@media(max-width:1000px){.two-col{grid-template-columns:1fr;}}
+.three-col{display:grid; grid-template-columns:1.15fr 1fr 1.15fr; gap:18px;}
+@media(max-width:1100px){.three-col{grid-template-columns:1fr;}}
+.chart-wrap{position:relative; height:230px;}
+
+/* ---------------- WING TABLES ---------------- */
+.table-scroll{overflow-x:auto;}
+table{width:100%; border-collapse:collapse; font-size:12.5px;}
+thead th{text-align:left; padding:9px 10px; background:#F8F9FC; color:var(--muted); font-weight:700; font-size:10.5px;
+  letter-spacing:.02em; text-transform:uppercase; border-bottom:1px solid var(--line); white-space:nowrap;}
+tbody td{padding:9px 10px; border-bottom:1px solid #F3F4F8; white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none; font-weight:700; background:#FAFAFD;}
+td.num, th.num{text-align:right;}
+.wing-dot{display:inline-flex; align-items:center; gap:7px; font-weight:600;}
+.wing-dot::before{content:''; width:8px; height:8px; border-radius:50%; background:var(--dot,#999); flex-shrink:0;}
+.badge{display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:10.5px; font-weight:700;}
+.badge.good{background:var(--green-bg); color:var(--green);}
+.badge.moderate{background:var(--orange-bg); color:var(--orange);}
+.badge.low{background:var(--pink-bg); color:var(--pink);}
+.badge::before{content:''; width:6px; height:6px; border-radius:50%; background:currentColor;}
+
+/* ---------------- QUICK ACTIONS ---------------- */
+.qa-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;}
+.qa-btn{background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:14px; display:flex; flex-direction:column; gap:10px; text-align:left;}
+.qa-btn:hover{border-color:var(--indigo); box-shadow:0 4px 14px rgba(91,98,245,.14);}
+.qa-btn .icon{width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:#fff;}
+.qa-btn .icon svg{width:16px; height:16px;}
+.qa-btn .label{font-size:12px; font-weight:700;}
+
+/* ---------------- EMPTY STATE ---------------- */
+.empty-state{padding:34px 20px; text-align:center; color:var(--muted);}
+.empty-state .glyph{font-size:26px; margin-bottom:8px; opacity:.6;}
+.empty-state p{font-size:12.5px; max-width:340px; margin:4px auto 14px;}
+
+/* ---------------- BUTTONS ---------------- */
+.btn{border-radius:9px; padding:9px 16px; font-size:12.5px; font-weight:700; background:var(--indigo); color:#fff; display:inline-flex; align-items:center; gap:7px;}
+.btn:hover{background:var(--indigo-dark);}
+.btn.ghost{background:#fff; color:var(--ink); border:1px solid var(--line);}
+.btn.ghost:hover{background:#F8F9FC;}
+
+/* ---------------- MONTH TABS ---------------- */
+.month-tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; margin-bottom:16px;}
+.month-tab{flex-shrink:0; padding:8px 15px; border-radius:20px; font-size:12px; font-weight:700; color:var(--muted); background:#F4F5FA;}
+.month-tab.active{background:var(--indigo); color:#fff;}
+.month-tab:hover:not(.active){background:#EAEBF3;}
+.month-tab .dot{display:none;}
+.month-tab.has-data::after{content:''; display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--green); margin-left:6px; vertical-align:middle;}
+
+/* ---------------- FORMS ---------------- */
+.form-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; align-items:end;}
+.field label{display:block; font-size:10.5px; font-weight:700; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.02em;}
+.field input, .field select{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:9px; font-size:12.5px; background:#fff;}
+.field input:focus, .field select:focus{border-color:var(--indigo);}
+.field.hidden{display:none;}
+
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;}
+
+.del-btn{border:1px solid var(--line); background:#fff; border-radius:7px; padding:3px 9px; font-size:11px;
+  font-weight:700; color:var(--pink); line-height:1.4;}
+.del-btn:hover{background:var(--pink-bg); border-color:var(--pink);}
+footer{text-align:center; padding:26px; font-size:11px; color:#9AA0B0;}
+.overlay{position:fixed; inset:0; background:rgba(15,20,40,.55); z-index:40; display:flex; align-items:center; justify-content:center; padding:20px;}
+.modal{background:#fff; border-radius:14px; padding:22px 24px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal h3{font-size:16px; font-weight:700; margin-bottom:4px;}
+.modal-sub{font-size:11.5px; color:var(--muted); margin-bottom:16px;}
+
+@media(max-width:780px){
+  .sidebar{position:fixed; z-index:30; left:-260px; box-shadow:0 0 40px rgba(0,0,0,.3);}
+  .sidebar.mobile-open{left:0;}
+  .content{padding:16px;}
+  .topbar{padding:12px 16px;}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <img class="crest-logo" id="sidebarLogo" alt="APSACS">
+      <div>
+        <div class="name">Army Public School &amp; College</div>
+        <div class="sub">RYK City Campus &middot; Exam Cell</div>
+      </div>
+    </div>
+    <ul class="nav" id="navList">
+      <li class="nav-item active" data-view="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>Dashboard</span>
+      </li>
+      <li class="nav-label">Paper Rim</li>
+      <li class="nav-item" data-view="rimPurchase">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h13l-1.5 8h-10z"/><circle cx="9" cy="19" r="1.4"/><circle cx="16" cy="19" r="1.4"/><path d="M3 3h2l1 3"/></svg>
+        <span>Purchasing Record</span>
+      </li>
+      <li class="nav-item" data-view="rimConsumption">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5"/><path d="M9 13h6M9 16h6"/></svg>
+        <span>Consumption</span>
+      </li>
+      <li class="nav-label">Stationery</li>
+      <li class="nav-item" data-view="statPurchase">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h13l-1.5 8h-10z"/><circle cx="9" cy="19" r="1.4"/><circle cx="16" cy="19" r="1.4"/><path d="M3 3h2l1 3"/></svg>
+        <span>Purchasing Detail</span>
+      </li>
+      <li class="nav-item" data-view="statConsumption">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5"/><path d="M9 13h6M9 16h6"/></svg>
+        <span>Consumption Detail</span>
+      </li>
+    </ul>
+    <div class="side-illustration">
+      <svg viewBox="0 0 120 90" fill="none"><rect x="10" y="55" width="100" height="10" rx="2" fill="#232C50"/>
+        <rect x="18" y="30" width="30" height="25" rx="2" fill="#5B62F5"/><rect x="52" y="20" width="30" height="35" rx="2" fill="#8B8FFB"/>
+        <rect x="86" y="38" width="18" height="17" rx="2" fill="#3D57D6"/>
+        <circle cx="60" cy="70" r="5" fill="#FF9F43"/><circle cx="72" cy="70" r="5" fill="#22B573"/></svg>
+    </div>
+    <button class="collapse-toggle" id="collapseBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 6l-6 6 6 6"/></svg>
+      <span>Collapse</span>
+    </button>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="burger" id="mobileBurger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <div>
+          <div class="page-title" id="pageTitle">Dashboard</div>
+          <div class="page-sub" id="pageSub">Overview of paper &amp; stationery usage</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <select class="select" id="dashMonthSelect"></select>
+        <div class="theme-row" id="themeRow">
+          <button class="theme-dot" data-t="indigo" title="Indigo (default)"></button>
+          <button class="theme-dot" data-t="crimson" title="Crimson"></button>
+          <button class="theme-dot" data-t="forest" title="Forest"></button>
+          <button class="theme-dot" data-t="slate" title="Slate"></button>
+        </div>
+        <div class="avatar">EA</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ======================= OVERVIEW ======================= -->
+      <section class="view active" id="view-overview">
+
+        <div class="kpi-row">
+          <div class="kpi-card blue">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M5 4h9l5 5v11H5z"/><path d="M14 4v5h5"/></svg></div>
+            <div class="label">Total Paper Consumption (Reams)</div>
+            <div class="value" id="kpiPaperReams">0</div>
+            <div class="foot" id="kpiPaperReamsFoot">This month</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg></div>
+            <div class="label">Total Stationery Consumption (Items)</div>
+            <div class="value" id="kpiStatItems">0</div>
+            <div class="foot" id="kpiStatItemsFoot">This month</div>
+          </div>
+          <div class="kpi-card orange">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2v20M17 6.5C17 5 15 4 12 4S7 5 7 6.5 9 9 12 9s5 1 5 2.5-2 2.5-5 2.5-5-1-5-2.5"/></svg></div>
+            <div class="label">Total Paper Cost</div>
+            <div class="value" id="kpiPaperCost">Rs. 0</div>
+            <div class="foot" id="kpiPaperCostFoot">This month</div>
+          </div>
+          <div class="kpi-card pink">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></div>
+            <div class="label">Total Stationery Cost</div>
+            <div class="value" id="kpiStatCost">Rs. 0</div>
+            <div class="foot" id="kpiStatCostFoot">This month</div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head"><h2>Paper consumption by wing</h2><span class="meta" id="paperWingMeta">This month</span></div>
+            <div class="panel-body"><div class="table-scroll"><table>
+              <thead><tr><th>Wing</th><th class="num">Opening (Reams)</th><th class="num">Purchased</th><th class="num">Consumed</th><th class="num">Balance</th><th class="num">Cost</th><th>Status</th></tr></thead>
+              <tbody id="paperWingTable"></tbody>
+            </table></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Stationery consumption by wing</h2><span class="meta" id="statWingMeta">This month</span></div>
+            <div class="panel-body"><div class="table-scroll"><table>
+              <thead><tr><th>Wing</th><th class="num">Opening (Items)</th><th class="num">Purchased</th><th class="num">Consumed</th><th class="num">Balance</th><th class="num">Cost</th><th>Status</th></tr></thead>
+              <tbody id="statWingTable"></tbody>
+            </table></div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Stationery consumption by item</h2><span class="meta" id="itemListMeta">This month</span></div>
+          <div class="panel-body" id="itemConsumptionBox"></div>
+        </div>
+
+        <div class="three-col">
+          <div class="panel">
+            <div class="panel-head"><h2>Paper consumption (reams)</h2><span class="meta">By wing</span></div>
+            <div class="panel-body"><div class="chart-wrap"><canvas id="paperBarChart"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Overall summary</h2><span class="meta" id="overallMeta"></span></div>
+            <div class="panel-body"><div class="chart-wrap" id="overallDoughnutWrap"><canvas id="overallDoughnut"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Stationery consumption (items)</h2><span class="meta">By wing</span></div>
+            <div class="panel-body"><div class="chart-wrap"><canvas id="statBarChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Quick actions</h2></div>
+          <div class="panel-body">
+            <div class="qa-grid">
+              <button class="qa-btn" onclick="switchView('rimPurchase')"><div class="icon" style="background:var(--blue);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></div><div class="label">Add Paper Rim Purchase</div></button>
+              <button class="qa-btn" onclick="switchView('rimConsumption')"><div class="icon" style="background:var(--green);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></div><div class="label">Add Paper Rim Consumption</div></button>
+              <button class="qa-btn" onclick="switchView('statPurchase')"><div class="icon" style="background:var(--orange);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></div><div class="label">Add Stationery Purchase</div></button>
+              <button class="qa-btn" onclick="switchView('statConsumption')"><div class="icon" style="background:var(--pink);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></div><div class="label">Add Stationery Consumption</div></button>
+              <button class="qa-btn" onclick="exportSummaryCSV()"><div class="icon" style="background:#5B62F5;"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></div><div class="label">Monthly Report (CSV)</div></button>
+              <button class="qa-btn" onclick="exportAllCSV()"><div class="icon" style="background:#22B573;"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div class="label">Export All Data (CSV)</div></button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ======================= RIM PURCHASE ======================= -->
+      <section class="view" id="view-rimPurchase">
+        <div class="month-tabs" id="rpMonthTabs"></div>
+        <div class="panel">
+          <div class="panel-head"><h2>Add a rim purchase — <span id="rpMonthLabel"></span></h2></div>
+          <div class="panel-body">
+            <form class="form-grid" id="formRimPurchase">
+              <div class="field"><label>Date</label><input type="date" name="date" required></div>
+              <div class="field"><label>Category</label><select name="category" id="rpCategory"></select></div>
+              <div class="field"><label>Wing (optional)</label><select name="wing" id="rpWing"></select></div>
+              <div class="field"><label>Quantity</label><input type="number" name="qty" min="1" step="any" required></div>
+              <div class="field"><label>Rate / unit (Rs.)</label><input type="number" name="rate" min="0" required></div>
+              <div class="field"><label>Invoice / ref</label><input type="text" name="ref" placeholder="optional"></div>
+              <div class="field"><label>Bill / receipt</label><input type="file" name="bill" id="rpBill" accept="image/*,.pdf"></div>
+              <div class="field"><button class="btn" type="submit">Add entry</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Purchasing record</h2><div style="display:flex;align-items:center;gap:12px;"><span class="meta"><span id="rpCount">0</span> entries</span><button class="btn ghost" onclick="downloadRimPurchasePdf()">&#128438; Download PDF</button></div></div>
+          <div class="panel-body">
+            <div class="table-scroll"><table>
+              <thead><tr><th>Date</th><th>Category</th><th>Wing</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th class="num">Amount</th><th>Ref</th><th>Bill</th></tr></thead>
+              <tbody id="rpTableBody"></tbody>
+            </table></div>
+            <div id="rpEmpty" class="empty-state" style="display:none;"><div class="glyph">&#128220;</div><p>No rim purchases recorded for this month yet.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================= RIM CONSUMPTION ======================= -->
+      <section class="view" id="view-rimConsumption">
+        <div class="month-tabs" id="rcMonthTabs"></div>
+
+        <!-- ONE entry form; the Wing dropdown decides which wing tab the entry lands in -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Add a consumption entry &mdash; <span id="rcMonthLabel"></span></h2>
+            <button class="btn ghost" onclick="openPrintDialog()">&#128438; Download print-ready PDF</button>
+          </div>
+          <div class="panel-body">
+            <form class="form-grid" id="formRimConsumption">
+              <div class="field"><label>Date</label><input type="date" name="date" required></div>
+              <div class="field"><label>Wing</label><select name="wing" id="rcFormWing"></select></div>
+              <div class="field"><label>Category</label><select name="category" id="rcFormCategory"></select></div>
+              <div class="field"><label>Sheets used</label><input type="number" name="sheets" min="1" required></div>
+              <div class="field"><button class="btn" type="submit">Add entry</button></div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Display: one tab per wing -->
+        <div class="month-tabs" id="rcWingTabs"></div>
+
+        <div class="panel">
+          <div class="panel-head"><h2 id="rcDisplayTitle">Entries</h2><span class="meta"><span id="rcWingCount">0</span> entries</span></div>
+          <div class="panel-body">
+            <div id="rcAllWingsWrap" class="table-scroll"></div>
+            <div id="rcSingleWingWrap">
+              <div class="table-scroll"><table>
+                <thead><tr><th>Date</th><th>Category</th><th class="num">Sheets</th><th class="num">Copies</th><th class="num">Reams</th><th></th></tr></thead>
+                <tbody id="rcWingTableBody"></tbody>
+              </table></div>
+              <div id="rcWingEmpty" class="empty-state" style="display:none;"><div class="glyph">&#128203;</div><p>No entries for this wing yet this month.</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Print dialog -->
+      <div id="printOverlay" class="overlay" style="display:none;">
+        <div class="modal">
+          <h3>Download print-ready PDF</h3>
+          <p class="modal-sub">One wing per page, ready to print.</p>
+          <div class="field" style="margin-bottom:12px;"><label>Month</label><select id="printMonth"></select></div>
+          <div class="field" style="margin-bottom:16px;"><label>Wing</label><select id="printWing"></select></div>
+          <div style="display:flex; gap:9px; justify-content:flex-end;">
+            <button class="btn ghost" onclick="closePrintDialog()">Cancel</button>
+            <button class="btn" onclick="runPrintDownload()">Download PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================= STATIONERY PURCHASE ======================= -->
+      <section class="view" id="view-statPurchase">
+        <div class="month-tabs" id="spMonthTabs"></div>
+        <div class="month-tabs" id="spSubTabs" style="margin-top:-8px;"></div>
+
+        <div id="spSummaryView" style="display:none;">
+          <div class="panel">
+            <div class="panel-head"><h2>Consumption detail — <span id="spSummaryMonthLabel"></span></h2><span class="meta">Date &middot; wing &middot; item</span></div>
+            <div class="panel-body"><div class="table-scroll" id="spSummaryLogWrap"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Item balance</h2><span class="meta">Opening + Purchased − Consumed</span></div>
+            <div class="panel-body">
+              <div class="table-scroll" id="spSummaryBalanceWrap"></div>
+              <div style="margin-top:14px;"><button class="btn ghost" onclick="downloadStatSummaryPdf()">Download PDF</button></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="spEntriesView">
+        <div class="panel">
+          <div class="panel-head"><h2>Add a stationery purchase — <span id="spMonthLabel"></span></h2></div>
+          <div class="panel-body">
+            <form class="form-grid" id="formStatPurchase">
+              <div class="field"><label>Date</label><input type="date" name="date" required></div>
+              <div class="field"><label>Item</label><select name="item" id="spItem"></select></div>
+              <div class="field hidden" id="spColorField"><label>Colour</label><select name="color" id="spColor"></select></div>
+              <div class="field hidden" id="spSizeField"><label>Size</label><select name="size" id="spSize"></select></div>
+              <div class="field"><label>Wing (optional)</label><select name="wing" id="spWing"></select></div>
+              <div class="field"><label>Quantity</label><input type="number" name="qty" min="1" required></div>
+              <div class="field"><label>Unit</label><input type="text" name="unit" placeholder="pcs / box / dozen" required></div>
+              <div class="field"><label>Rate (Rs.)</label><input type="number" name="rate" min="0" required></div>
+              <div class="field"><label>Supplier</label><input type="text" name="supplier" placeholder="optional"></div>
+              <div class="field"><label>Bill / receipt</label><input type="file" name="bill" id="spBill" accept="image/*,.pdf"></div>
+              <div class="field"><button class="btn" type="submit">Add entry</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Purchasing detail</h2><div style="display:flex;align-items:center;gap:12px;"><span class="meta"><span id="spCount">0</span> entries</span><button class="btn ghost" onclick="downloadStatPurchasePdf()">&#128438; Download PDF</button></div></div>
+          <div class="panel-body">
+            <div class="table-scroll"><table>
+              <thead><tr><th>Date</th><th>Item</th><th>Wing</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th class="num">Amount</th><th>Supplier</th><th>Bill</th></tr></thead>
+              <tbody id="spTableBody"></tbody>
+            </table></div>
+            <div id="spEmpty" class="empty-state" style="display:none;"><div class="glyph">&#128221;</div><p>No stationery purchases recorded for this month yet.</p></div>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      <!-- ======================= STATIONERY CONSUMPTION ======================= -->
+      <section class="view" id="view-statConsumption">
+        <div class="month-tabs" id="scMonthTabs"></div>
+        <div class="month-tabs" id="scSubTabs" style="margin-top:-8px;"></div>
+
+        <div id="scEntriesView">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Add a consumption entry — <span id="scMonthLabel"></span></h2>
+            <button class="btn ghost" onclick="openStatConsPrintDialog()">&#128438; Download print-ready PDF</button>
+          </div>
+          <div class="panel-body">
+            <form class="form-grid" id="formStatConsumption">
+              <div class="field"><label>Date</label><input type="date" name="date" required></div>
+              <div class="field"><label>Item</label><select name="item" id="scItem"></select></div>
+              <div class="field hidden" id="scColorField"><label>Colour</label><select name="color" id="scColor"></select></div>
+              <div class="field"><label>Wing</label><select name="wing" id="scWing"></select></div>
+              <div class="field"><label>Quantity</label><input type="number" name="qty" min="1" required></div>
+              <div class="field"><label>Issued to</label><input type="text" name="issuedTo" placeholder="name of recipient"></div>
+              <div class="field"><label>Remarks</label><input type="text" name="note" placeholder="optional"></div>
+              <div class="field"><button class="btn" type="submit">Add entry</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Consumption detail</h2><span class="meta"><span id="scCount">0</span> entries</span></div>
+          <div class="panel-body">
+            <div class="table-scroll"><table>
+              <thead><tr><th>Date</th><th>Item detail</th><th>Wing</th><th class="num">Qty</th><th>Issued to</th><th>Signature</th><th>Remarks</th><th></th></tr></thead>
+              <tbody id="scTableBody"></tbody>
+            </table></div>
+            <div id="scEmpty" class="empty-state" style="display:none;"><div class="glyph">&#9998;</div><p>No stationery consumption logged for this month yet.</p></div>
+          </div>
+        </div>
+        </div>
+
+        <div id="scStatusView" style="display:none;">
+          <div class="panel">
+            <div class="panel-head"><h2>Item-wise stock ledger</h2><span class="meta" id="scStatusMonthLabel"></span></div>
+            <div class="panel-body"><div class="table-scroll" id="scStatusLedgerWrap"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stationery Consumption print dialog -->
+      <div id="scPrintOverlay" class="overlay" style="display:none;">
+        <div class="modal">
+          <h3>Download print-ready PDF</h3>
+          <p class="modal-sub">Stationery Consumption Detail for the chosen month.</p>
+          <div class="field" style="margin-bottom:16px;"><label>Month</label><select id="scPrintMonth"></select></div>
+          <div style="display:flex; gap:9px; justify-content:flex-end;">
+            <button class="btn ghost" onclick="closeStatConsPrintDialog()">Cancel</button>
+            <button class="btn" onclick="runStatConsPrintDownload()">Download PDF</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <footer>APSACS RYK City &middot; Stationery &amp; Paper Portal &middot; data lives in this browser tab until connected to the live Google Sheet</footer>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   DATA LAYER
+   Swap the four arrays below (and the load/save calls at the
+   bottom of app.js) for calls to your Google Sheets Apps Script
+   endpoints once the sheet is connected — every screen reads
+   and writes only through these arrays, so nothing else in the
+   app needs to change.
+   ========================================================= */
+
+const REAM_SIZE = 470; // sheets per ream
+const SCHOOL_LOGO_B64 = 'data:image/png;base64,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'; // used in the sidebar crest and PDF headers
+const COPIES_PER_SHEET = 2; // one sheet = 2 copies (both sides)
+
+const MONTHS = ["January","February","March","April","May","June",
+                "July","August","September","October","November","December"];
+
+const WINGS = ["Pre Wing","Junior Wing","Middle Wing","Senior","College","O Level","Admin"];
+const WING_COLORS = ['#4C6EF5','#22B573','#FF9F43','#8B5CF6','#14B8A6','#FF5C7C','#64748B'];
+
+const PAPER_CATEGORIES = [
+  "Coordination pages","Evaluation pages","Breakups / SOW","D. Lesson Planner","Worksheets",
+  "Result cards / Award lists","Admission / Registration","Date Sheet / Block syllabus","Question papers",
+  "Roll No. slips / Board affairs","Gate pass / All Performas","Misc"
+];
+
+const RIM_CATEGORIES = ["Rim","Loose Sheets","Photocopy Sheet A4","Photocopy Sheet A6"];
+const RIM_UNITS = {"Rim":"Reams","Loose Sheets":"Sheets","Photocopy Sheet A4":"Sheets","Photocopy Sheet A6":"Sheets"};
+
+const COLOR_SET_STD = ["Blue","Black","Red","Green"];
+
+// Each stationery item: {name, colors?: [...], sizes?: [...]}
+const STATIONERY_ITEMS = [
+  {name:"Board Marker", colors:COLOR_SET_STD},
+  {name:"Board Marker Ink", colors:COLOR_SET_STD},
+  {name:"Permanent Marker", colors:COLOR_SET_STD},
+  {name:"Permanent Marker Ink", colors:COLOR_SET_STD},
+  {name:"Highlighter", colors:COLOR_SET_STD},
+  {name:"Whitener", colors:COLOR_SET_STD},
+  {name:"Ball Points", colors:COLOR_SET_STD},
+  {name:"Pointer", colors:COLOR_SET_STD},
+  {name:"Stamp Pad Ink", colors:COLOR_SET_STD},
+  {name:"LED Pencil"},
+  {name:"Eraser"},
+  {name:"Sharpener"},
+  {name:"Stamp Pad"},
+  {name:"Stapler — Large"},
+  {name:"Stapler — Small"},
+  {name:"Stapler Pin — Small"},
+  {name:"Stapler Pin — Large"},
+  {name:"Scotch Tape"},
+  {name:"Binding Tape"},
+  {name:"Gel Pen"},
+  {name:"Thumb Pin"},
+  {name:"Paper Clip"},
+  {name:"Rubber Band"},
+  {name:"Envelope", sizes:["A4","Legal","A5","A6"], colors:["White","Brown"]},
+  {name:"Color Printer Ink"},
+  {name:"Loose Sheets"}
+];
+function findItem(name){ return STATIONERY_ITEMS.find(i => i.name === name); }
+
+/* ---------------------------------------------------------
+   Records — {month} holds a MONTHS index (0 = January)
+   --------------------------------------------------------- */
+let rimPurchases = [];      // {month, date, category, wing, qty, unit, rate, ref}
+let statPurchases = [];     // {month, date, item, color, size, wing, qty, unit, rate, supplier}
+let statConsumption = [];   // {month, wing, item, color, qty, note}
+
+// Seeded with January's verified register totals (from the reconciled Excel file)
+let __uid = 0;
+function newId(){ return 'r' + (++__uid) + '_' + Date.now().toString(36); }
+
+let rimConsumption = [
+  {month:0, wing:"Pre Wing",    category:"Breakups / SOW",              sheets:24},
+  {month:0, wing:"Junior Wing", category:"Question papers",             sheets:36},
+  {month:0, wing:"Middle Wing", category:"Question papers",             sheets:10148},
+  {month:0, wing:"Senior",      category:"Question papers",             sheets:8550},
+  {month:0, wing:"College",     category:"Date Sheet / Block syllabus", sheets:4374},
+  {month:0, wing:"O Level",     category:"Question papers",             sheets:6452},
+];
+
+// Give the seeded rows stable ids so they can be deleted like any other entry
+rimConsumption.forEach(r => { if(!r.id) r.id = newId(); });
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const reams = s => s / REAM_SIZE;
+const copies = s => s * COPIES_PER_SHEET;
+const fmt = n => Number(n||0).toLocaleString('en-PK', {maximumFractionDigits: 2});
+const rs = n => 'Rs. ' + Number(n||0).toLocaleString('en-PK', {maximumFractionDigits: 0});
+const wingColor = w => WING_COLORS[WINGS.indexOf(w)] || '#999';
+
+function populateSelect(el, items, withAll){
+  el.innerHTML = (withAll ? `<option value="">${withAll}</option>` : '') +
+    items.map(i => `<option value="${i}">${i}</option>`).join('');
+}
+function statusFor(balance, good, moderate){
+  if(balance >= good) return {cls:'good', label:'Good'};
+  if(balance >= moderate) return {cls:'moderate', label:'Moderate'};
+  return {cls:'low', label:'Low'};
+}
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let dashMonth = 0;
+let rpMonth = 0, rcMonth = 0, spMonth = 0, scMonth = 0;
+let rcWing = 'All Wings';
+let spSubTab = 'entries';
+let scSubTab = 'entries';
+
+/* =========================================================
+   TAB BARS (month tabs + generic tab bars for wings / sub-views)
+   ========================================================= */
+function renderMonthTabs(containerId, hasDataFn, activeMonth, onClick){
+  const el = document.getElementById(containerId);
+  el.innerHTML = MONTHS.map((m,i) => `
+    <button class="month-tab ${i===activeMonth?'active':''} ${hasDataFn(i)?'has-data':''}" data-m="${i}">${m.slice(0,3)}</button>
+  `).join('');
+  el.querySelectorAll('.month-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=> onClick(Number(btn.dataset.m)));
+  });
+}
+function renderTabBar(containerId, labels, activeLabel, hasDataFn, onClick){
+  const el = document.getElementById(containerId);
+  el.innerHTML = labels.map(l => `
+    <button class="month-tab ${l===activeLabel?'active':''} ${hasDataFn&&hasDataFn(l)?'has-data':''}" data-l="${l}">${l}</button>
+  `).join('');
+  el.querySelectorAll('.month-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=> onClick(btn.dataset.l));
+  });
+}
+
+/* =========================================================
+   PAPER — per-wing stats & cost
+   ========================================================= */
+function paperWingPurchasedReams(wing, m){
+  return rimPurchases.filter(p=>p.wing===wing && p.month===m)
+    .reduce((s,p)=> s + (p.unit==='Reams' ? Number(p.qty) : reams(Number(p.qty))), 0);
+}
+function paperWingConsumedReams(wing, m){
+  return reams(rimConsumption.filter(c=>c.wing===wing && c.month===m).reduce((s,c)=>s+Number(c.sheets),0));
+}
+function paperAvgRatePerReam(){
+  let totalReams=0, totalAmt=0;
+  rimPurchases.forEach(p=>{
+    const r = p.unit==='Reams' ? Number(p.qty) : reams(Number(p.qty));
+    const costPerReam = p.unit==='Reams' ? Number(p.rate) : Number(p.rate)*REAM_SIZE;
+    totalReams += r; totalAmt += r*costPerReam;
+  });
+  return totalReams>0 ? totalAmt/totalReams : 0;
+}
+function runningBalance(wing, uptoMonthExclusive, purchFn, consFn){
+  let bal = 0;
+  for(let m=0; m<uptoMonthExclusive; m++) bal += purchFn(wing,m) - consFn(wing,m);
+  return bal;
+}
+function paperWingTableRows(month){
+  const rate = paperAvgRatePerReam();
+  return WINGS.map(w=>{
+    const purchased = paperWingPurchasedReams(w, month);
+    const consumed = paperWingConsumedReams(w, month);
+    const opening = runningBalance(w, month, paperWingPurchasedReams, paperWingConsumedReams);
+    const balance = opening + purchased - consumed;
+    const cost = consumed * rate;
+    return {w, opening, purchased, consumed, balance, cost, st: statusFor(balance, 15, 5)};
+  });
+}
+function paperWingTableHTML(rows){
+  return rows.map(r => `
+    <tr><td><span class="wing-dot" style="--dot:${wingColor(r.w)}">${r.w}</span></td>
+    <td class="num">${fmt(r.opening)}</td><td class="num">${fmt(r.purchased)}</td>
+    <td class="num">${fmt(r.consumed)}</td><td class="num">${fmt(r.balance)}</td>
+    <td class="num">${rs(r.cost)}</td>
+    <td><span class="badge ${r.st.cls}">${r.st.label}</span></td></tr>`).join('') +
+    `<tr><td>Total</td><td class="num">${fmt(rows.reduce((s,r)=>s+r.opening,0))}</td>
+     <td class="num">${fmt(rows.reduce((s,r)=>s+r.purchased,0))}</td>
+     <td class="num">${fmt(rows.reduce((s,r)=>s+r.consumed,0))}</td>
+     <td class="num">${fmt(rows.reduce((s,r)=>s+r.balance,0))}</td>
+     <td class="num">${rs(rows.reduce((s,r)=>s+r.cost,0))}</td><td></td></tr>`;
+}
+
+/* =========================================================
+   STATIONERY — per-wing & per-item stats & cost
+   ========================================================= */
+function statWingPurchasedQty(wing, m){
+  return statPurchases.filter(p=>p.wing===wing && p.month===m).reduce((s,p)=>s+Number(p.qty),0);
+}
+function statWingConsumedQty(wing, m){
+  return statConsumption.filter(c=>c.wing===wing && c.month===m).reduce((s,c)=>s+Number(c.qty),0);
+}
+function itemAvgRate(itemName){
+  const rows = statPurchases.filter(p=>p.item===itemName);
+  const totalQty = rows.reduce((s,p)=>s+Number(p.qty),0);
+  const totalAmt = rows.reduce((s,p)=>s+Number(p.qty)*Number(p.rate),0);
+  return totalQty>0 ? totalAmt/totalQty : 0;
+}
+function itemMonthConsumedQty(itemName, m){
+  return statConsumption.filter(c=>c.item===itemName && c.month===m).reduce((s,c)=>s+Number(c.qty),0);
+}
+function itemPurchasedQty(itemName, m){
+  return statPurchases.filter(p=>p.item===itemName && p.month===m).reduce((s,p)=>s+Number(p.qty),0);
+}
+function itemRunningBalance(itemName, uptoMonthExclusive){
+  let bal = 0;
+  for(let m=0; m<uptoMonthExclusive; m++) bal += itemPurchasedQty(itemName,m) - itemMonthConsumedQty(itemName,m);
+  return bal;
+}
+function statWingConsumedCost(wing, m){
+  return statConsumption.filter(c=>c.wing===wing && c.month===m)
+    .reduce((s,c)=> s + Number(c.qty) * itemAvgRate(c.item), 0);
+}
+function statWingTableRows(month){
+  return WINGS.map(w=>{
+    const purchased = statWingPurchasedQty(w, month);
+    const consumed = statWingConsumedQty(w, month);
+    const opening = runningBalance(w, month, statWingPurchasedQty, statWingConsumedQty);
+    const balance = opening + purchased - consumed;
+    const cost = statWingConsumedCost(w, month);
+    return {w, opening, purchased, consumed, balance, cost, st: statusFor(balance, 30, 10)};
+  });
+}
+function statWingTableHTML(rows){
+  return rows.map(r => `
+    <tr><td><span class="wing-dot" style="--dot:${wingColor(r.w)}">${r.w}</span></td>
+    <td class="num">${fmt(r.opening)}</td><td class="num">${fmt(r.purchased)}</td>
+    <td class="num">${fmt(r.consumed)}</td><td class="num">${fmt(r.balance)}</td>
+    <td class="num">${rs(r.cost)}</td>
+    <td><span class="badge ${r.st.cls}">${r.st.label}</span></td></tr>`).join('') +
+    `<tr><td>Total</td><td class="num">${fmt(rows.reduce((s,r)=>s+r.opening,0))}</td>
+     <td class="num">${fmt(rows.reduce((s,r)=>s+r.purchased,0))}</td>
+     <td class="num">${fmt(rows.reduce((s,r)=>s+r.consumed,0))}</td>
+     <td class="num">${fmt(rows.reduce((s,r)=>s+r.balance,0))}</td>
+     <td class="num">${rs(rows.reduce((s,r)=>s+r.cost,0))}</td><td></td></tr>`;
+}
+function itemConsumptionRows(month){
+  return STATIONERY_ITEMS.map(it=>{
+    const qty = itemMonthConsumedQty(it.name, month);
+    const rate = itemAvgRate(it.name);
+    return {name:it.name, qty, cost: qty*rate};
+  }).filter(r=>r.qty>0);
+}
+function itemConsumptionHTML(month){
+  const rows = itemConsumptionRows(month);
+  if(rows.length===0) return `<div class="empty-state"><div class="glyph">&#128202;</div><p>No stationery consumption logged for ${MONTHS[month]} yet.</p></div>`;
+  const totalQty = rows.reduce((s,r)=>s+r.qty,0), totalCost = rows.reduce((s,r)=>s+r.cost,0);
+  return '<table><thead><tr><th>Item</th><th class="num">Qty used</th><th class="num">Est. cost</th></tr></thead><tbody>' +
+    rows.map(r=>`<tr><td>${r.name}</td><td class="num">${fmt(r.qty)}</td><td class="num">${rs(r.cost)}</td></tr>`).join('') +
+    `<tr><td>Total</td><td class="num">${fmt(totalQty)}</td><td class="num">${rs(totalCost)}</td></tr>` +
+    '</tbody></table>';
+}
+function itemBalanceRows(month){
+  return STATIONERY_ITEMS.map(it=>{
+    const purchased = itemPurchasedQty(it.name, month);
+    const consumed = itemMonthConsumedQty(it.name, month);
+    const opening = itemRunningBalance(it.name, month);
+    const balance = opening+purchased-consumed;
+    return {name:it.name, opening, purchased, consumed, balance};
+  }).filter(r=>r.opening || r.purchased || r.consumed);
+}
+function itemBalanceHTML(month){
+  const rows = itemBalanceRows(month);
+  if(!rows.length) return `<div class="empty-state"><p>No stationery activity for ${MONTHS[month]} yet.</p></div>`;
+  return '<table><thead><tr><th>Item</th><th class="num">Opening</th><th class="num">Purchased</th><th class="num">Consumed</th><th class="num">Balance</th></tr></thead><tbody>' +
+    rows.map(r=>`<tr><td>${r.name}</td><td class="num">${fmt(r.opening)}</td><td class="num">${fmt(r.purchased)}</td><td class="num">${fmt(r.consumed)}</td><td class="num">${fmt(r.balance)}</td></tr>`).join('') +
+    '</tbody></table>';
+}
+function itemLedgerRows(month){
+  const rows = [];
+  STATIONERY_ITEMS.forEach(it=>{
+    const purchRows = statPurchases.filter(p=>p.item===it.name && p.month===month);
+    const consRows = statConsumption.filter(c=>c.item===it.name && c.month===month);
+    if(purchRows.length===0 && consRows.length===0) return;
+    const dates = [...new Set([...purchRows.map(p=>p.date||''), ...consRows.map(c=>c.date||'')])].sort();
+    let opening = itemRunningBalance(it.name, month); // carried over from earlier months
+    const rate = itemAvgRate(it.name); // exact — from this item's own purchase rate(s)
+    dates.forEach(dt=>{
+      const purchased = purchRows.filter(p=>p.date===dt).reduce((s,p)=>s+Number(p.qty),0);
+      const consumed = consRows.filter(c=>c.date===dt).reduce((s,c)=>s+Number(c.qty),0);
+      const totalItem = opening + purchased;
+      const balance = totalItem - consumed;
+      const cost = consumed * rate;
+      rows.push({date: dt||'—', item: it.name, opening, purchased, totalItem, consumed, balance, cost, st: statusFor(balance, 30, 10)});
+      opening = balance; // next entry's opening = this entry's balance
+    });
+  });
+  return rows;
+}
+function itemLedgerHTML(month){
+  const rows = itemLedgerRows(month);
+  if(!rows.length) return `<div class="empty-state"><div class="glyph">&#128202;</div><p>No stationery purchase or consumption activity for ${MONTHS[month]} yet.</p></div>`;
+  return '<table><thead><tr><th>Date</th><th>Item</th><th class="num">Opening</th><th class="num">Purchased</th>' +
+    '<th class="num">Total Item</th><th class="num">Consumed</th><th class="num">Balance</th><th class="num">Cost</th><th>Status</th></tr></thead><tbody>' +
+    rows.map(r=>`<tr><td>${r.date}</td><td>${r.item}</td><td class="num">${fmt(r.opening)}</td>
+      <td class="num">${fmt(r.purchased)}</td><td class="num">${fmt(r.totalItem)}</td><td class="num">${fmt(r.consumed)}</td>
+      <td class="num">${fmt(r.balance)}</td><td class="num">${rs(r.cost)}</td>
+      <td><span class="badge ${r.st.cls}">${r.st.label}</span></td></tr>`).join('') +
+    '</tbody></table>';
+}
+
+function statConsumptionLogHTML(month){
+  const rows = statConsumption.filter(c=>c.month===month).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!rows.length) return `<div class="empty-state"><p>No consumption entries for ${MONTHS[month]} yet.</p></div>`;
+  return '<table><thead><tr><th>Date</th><th>Wing</th><th>Item</th><th class="num">Qty</th><th class="num">Cost</th></tr></thead><tbody>' +
+    rows.map(c=>`<tr><td>${c.date||'—'}</td><td>${c.wing}</td><td>${c.item}${c.color?' ('+c.color+')':''}</td>
+      <td class="num">${fmt(c.qty)}</td><td class="num">${rs(c.qty*itemAvgRate(c.item))}</td></tr>`).join('') +
+    '</tbody></table>';
+}
+
+/* =========================================================
+   OVERVIEW
+   ========================================================= */
+let paperBarChart, statBarChart, overallDoughnut;
+
+function renderOverview(){
+  const monthLabel = MONTHS[dashMonth];
+  document.getElementById('paperWingMeta').textContent = monthLabel;
+  document.getElementById('statWingMeta').textContent = monthLabel;
+  document.getElementById('itemListMeta').textContent = monthLabel;
+
+  const paperReamsTotal = reams(rimConsumption.filter(c=>c.month===dashMonth).reduce((s,c)=>s+Number(c.sheets),0));
+  const statItemsTotal = statConsumption.filter(c=>c.month===dashMonth).reduce((s,c)=>s+Number(c.qty),0);
+  const paperCostTotal = rimPurchases.filter(p=>p.month===dashMonth).reduce((s,p)=>s+Number(p.qty)*Number(p.rate),0);
+  const statCostTotal = statPurchases.filter(p=>p.month===dashMonth).reduce((s,p)=>s+Number(p.qty)*Number(p.rate),0);
+  document.getElementById('kpiPaperReams').textContent = fmt(paperReamsTotal);
+  document.getElementById('kpiStatItems').textContent = fmt(statItemsTotal);
+  document.getElementById('kpiPaperCost').textContent = rs(paperCostTotal);
+  document.getElementById('kpiStatCost').textContent = rs(statCostTotal);
+  ['kpiPaperReamsFoot','kpiStatItemsFoot','kpiPaperCostFoot','kpiStatCostFoot'].forEach(id=>{
+    document.getElementById(id).textContent = monthLabel;
+  });
+
+  const paperRows = paperWingTableRows(dashMonth);
+  document.getElementById('paperWingTable').innerHTML = paperWingTableHTML(paperRows);
+
+  const statRows = statWingTableRows(dashMonth);
+  document.getElementById('statWingTable').innerHTML = statWingTableHTML(statRows);
+
+  document.getElementById('itemConsumptionBox').innerHTML = itemConsumptionHTML(dashMonth);
+
+  renderOverviewCharts(paperRows, statRows);
+}
+
+function renderOverviewCharts(paperRows, statRows){
+  const ctx1 = document.getElementById('paperBarChart');
+  if(paperBarChart) paperBarChart.destroy();
+  paperBarChart = new Chart(ctx1, {
+    type:'bar',
+    data:{ labels:WINGS, datasets:[{ data: paperRows.map(r=>r.consumed), backgroundColor: WING_COLORS, borderRadius:5, maxBarThickness:34 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>fmt(c.raw)+' reams'}} },
+      scales:{ y:{ beginAtZero:true, grid:{color:'#F0F1F6'} }, x:{ grid:{display:false}, ticks:{font:{size:9.5}} } } }
+  });
+
+  const ctx2 = document.getElementById('statBarChart');
+  if(statBarChart) statBarChart.destroy();
+  statBarChart = new Chart(ctx2, {
+    type:'bar',
+    data:{ labels:WINGS, datasets:[{ data: statRows.map(r=>r.consumed), backgroundColor: WING_COLORS, borderRadius:5, maxBarThickness:34 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>fmt(c.raw)+' items'}} },
+      scales:{ y:{ beginAtZero:true, grid:{color:'#F0F1F6'} }, x:{ grid:{display:false}, ticks:{font:{size:9.5}} } } }
+  });
+
+  const wrap = document.getElementById('overallDoughnutWrap');
+  const totalReams = paperRows.reduce((s,r)=>s+r.consumed,0);
+  document.getElementById('overallMeta').textContent = MONTHS[dashMonth];
+  wrap.innerHTML = '<canvas id="overallDoughnut"></canvas>' +
+    `<div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none;">
+       <div style="font-size:21px; font-weight:800;">${fmt(totalReams)}</div>
+       <div style="font-size:10px; color:var(--muted); font-weight:600;">Total Reams</div></div>`;
+  const ctx3 = document.getElementById('overallDoughnut');
+  overallDoughnut = new Chart(ctx3, {
+    type:'doughnut',
+    data:{ labels:WINGS, datasets:[{ data: paperRows.map(r=>r.consumed), backgroundColor: WING_COLORS, borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'70%',
+      plugins:{ legend:{position:'bottom', labels:{boxWidth:9, font:{size:9.5}, padding:8}},
+        tooltip:{callbacks:{label:c=>c.label+': '+fmt(c.raw)+' reams'}} } }
+  });
+}
+
+/* =========================================================
+   RIM PURCHASE PAGE
+   ========================================================= */
+function renderRimPurchase(){
+  renderMonthTabs('rpMonthTabs', m => rimPurchases.some(p=>p.month===m), rpMonth, m=>{ rpMonth = m; renderRimPurchase(); });
+  document.getElementById('rpMonthLabel').textContent = MONTHS[rpMonth];
+  const rows = rimPurchases.filter(p=>p.month===rpMonth);
+  document.getElementById('rpCount').textContent = rows.length;
+  document.getElementById('rpEmpty').style.display = rows.length ? 'none' : 'block';
+  document.getElementById('rpTableBody').innerHTML = rows.slice().reverse().map(p => `
+    <tr><td>${p.date||'—'}</td><td>${p.category}</td><td>${p.wing||'Central'}</td>
+    <td class="num">${fmt(p.qty)}</td><td>${p.unit}</td><td class="num">${rs(p.rate)}</td>
+    <td class="num">${rs(p.qty*p.rate)}</td><td>${p.ref||'—'}</td>
+    <td>${p.bill ? `<a href="${p.bill}" target="_blank" class="btn ghost" style="padding:4px 9px;font-size:10.5px;">View</a>` : '—'}</td></tr>`).join('');
+}
+
+/* =========================================================
+   RIM CONSUMPTION PAGE
+   One entry form (wing chosen in the form) + one display tab per wing
+   ========================================================= */
+function renderRimConsumption(){
+  renderMonthTabs('rcMonthTabs', m => rimConsumption.some(c=>c.month===m), rcMonth, m=>{ rcMonth = m; renderRimConsumption(); });
+  document.getElementById('rcMonthLabel').textContent = MONTHS[rcMonth];
+
+  renderTabBar('rcWingTabs', ['All Wings', ...WINGS], rcWing,
+    w => w==='All Wings'
+      ? rimConsumption.some(c=>c.month===rcMonth)
+      : rimConsumption.some(c=>c.wing===w && c.month===rcMonth),
+    w=>{ rcWing = w; renderRimConsumption(); });
+
+  const allWrap = document.getElementById('rcAllWingsWrap');
+  const oneWrap = document.getElementById('rcSingleWingWrap');
+
+  if(rcWing === 'All Wings'){
+    allWrap.style.display = 'block';
+    oneWrap.style.display = 'none';
+    document.getElementById('rcDisplayTitle').textContent = `All wings — ${MONTHS[rcMonth]}`;
+    document.getElementById('rcWingCount').textContent = rimConsumption.filter(c=>c.month===rcMonth).length;
+    renderRcMatrix();
+  } else {
+    allWrap.style.display = 'none';
+    oneWrap.style.display = 'block';
+    document.getElementById('rcDisplayTitle').textContent = `${rcWing} — ${MONTHS[rcMonth]}`;
+    const rows = rimConsumption.filter(c=>c.wing===rcWing && c.month===rcMonth);
+    document.getElementById('rcWingCount').textContent = rows.length;
+    document.getElementById('rcWingEmpty').style.display = rows.length ? 'none' : 'block';
+    const wingTotal = rows.reduce((s,c)=>s+Number(c.sheets),0);
+    document.getElementById('rcWingTableBody').innerHTML = rows.slice().reverse().map(c => `
+      <tr><td>${c.date||'—'}</td><td>${c.category}</td>
+      <td class="num">${fmt(c.sheets)}</td><td class="num">${fmt(copies(c.sheets))}</td>
+      <td class="num">${fmt(reams(c.sheets))}</td>
+      <td><button class="del-btn" onclick="deleteRimEntry('${c.id}')">Delete</button></td></tr>`).join('') +
+      (rows.length ? `<tr><td>Total</td><td></td><td class="num">${fmt(wingTotal)}</td>
+        <td class="num">${fmt(copies(wingTotal))}</td><td class="num">${fmt(reams(wingTotal))}</td><td></td></tr>` : '');
+  }
+}
+function renderRcMatrix(){
+  const monthRows = rimConsumption.filter(c=>c.month===rcMonth);
+  let head = '<table><thead><tr><th>Wing</th>' + PAPER_CATEGORIES.map(c=>`<th class="num">${c}</th>`).join('') +
+    '<th class="num">Total Sheets</th><th class="num">Total Copies</th><th class="num">Total Reams</th></tr></thead><tbody>';
+  let colTotals = PAPER_CATEGORIES.map(()=>0);
+  let body = WINGS.map(w=>{
+    const vals = PAPER_CATEGORIES.map((cat,i)=>{
+      const v = monthRows.filter(r=>r.wing===w && r.category===cat).reduce((s,r)=>s+Number(r.sheets),0);
+      colTotals[i]+=v; return v;
+    });
+    const total = vals.reduce((a,b)=>a+b,0);
+    return `<tr><td><span class="wing-dot" style="--dot:${wingColor(w)}">${w}</span></td>` +
+      vals.map(v=>`<td class="num">${v?fmt(v):'—'}</td>`).join('') +
+      `<td class="num">${fmt(total)}</td><td class="num">${fmt(copies(total))}</td><td class="num">${fmt(reams(total))}</td></tr>`;
+  }).join('');
+  const grand = colTotals.reduce((a,b)=>a+b,0);
+  const footRow = `<tr><td>Total</td>${colTotals.map(v=>`<td class="num">${fmt(v)}</td>`).join('')}
+    <td class="num">${fmt(grand)}</td><td class="num">${fmt(copies(grand))}</td><td class="num">${fmt(reams(grand))}</td></tr>`;
+  document.getElementById('rcAllWingsWrap').innerHTML = head + body + footRow + '</tbody></table>';
+}
+
+/* =========================================================
+   STATIONERY PURCHASE PAGE (Entries / Summary sub-tabs)
+   ========================================================= */
+function updateSpItemFields(){
+  const item = findItem(document.getElementById('spItem').value);
+  const colorField = document.getElementById('spColorField');
+  const sizeField = document.getElementById('spSizeField');
+  if(item && item.colors){ colorField.classList.remove('hidden'); populateSelect(document.getElementById('spColor'), item.colors); }
+  else { colorField.classList.add('hidden'); }
+  if(item && item.sizes){ sizeField.classList.remove('hidden'); populateSelect(document.getElementById('spSize'), item.sizes); }
+  else { sizeField.classList.add('hidden'); }
+}
+function renderStatPurchase(){
+  renderMonthTabs('spMonthTabs', m => statPurchases.some(p=>p.month===m), spMonth, m=>{ spMonth = m; renderStatPurchase(); });
+  renderTabBar('spSubTabs', ['Entries','Summary'], spSubTab.charAt(0).toUpperCase()+spSubTab.slice(1), null,
+    l=>{ spSubTab = l.toLowerCase(); renderStatPurchase(); });
+
+  document.getElementById('spEntriesView').style.display = spSubTab==='entries' ? 'block' : 'none';
+  document.getElementById('spSummaryView').style.display = spSubTab==='summary' ? 'block' : 'none';
+
+  if(spSubTab==='entries'){
+    document.getElementById('spMonthLabel').textContent = MONTHS[spMonth];
+    const rows = statPurchases.filter(p=>p.month===spMonth);
+    document.getElementById('spCount').textContent = rows.length;
+    document.getElementById('spEmpty').style.display = rows.length ? 'none' : 'block';
+    document.getElementById('spTableBody').innerHTML = rows.slice().reverse().map(p => {
+      const itemLabel = p.item + (p.color?` (${p.color}${p.size?', '+p.size:''})`:(p.size?` (${p.size})`:''));
+      return `<tr><td>${p.date||'—'}</td><td>${itemLabel}</td><td>${p.wing||'Central'}</td>
+      <td class="num">${fmt(p.qty)}</td><td>${p.unit}</td><td class="num">${rs(p.rate)}</td>
+      <td class="num">${rs(p.qty*p.rate)}</td><td>${p.supplier||'—'}</td>
+      <td>${p.bill ? `<a href="${p.bill}" target="_blank" class="btn ghost" style="padding:4px 9px;font-size:10.5px;">View</a>` : '—'}</td></tr>`;
+    }).join('');
+  } else {
+    document.getElementById('spSummaryMonthLabel').textContent = MONTHS[spMonth];
+    document.getElementById('spSummaryLogWrap').innerHTML = statConsumptionLogHTML(spMonth);
+    document.getElementById('spSummaryBalanceWrap').innerHTML = itemBalanceHTML(spMonth);
+  }
+}
+
+/* =========================================================
+   STATIONERY CONSUMPTION PAGE (Entries / Status sub-tabs)
+   ========================================================= */
+function updateScItemFields(){
+  const item = findItem(document.getElementById('scItem').value);
+  const colorField = document.getElementById('scColorField');
+  if(item && item.colors){ colorField.classList.remove('hidden'); populateSelect(document.getElementById('scColor'), item.colors); }
+  else { colorField.classList.add('hidden'); }
+}
+function renderStatConsumption(){
+  renderMonthTabs('scMonthTabs', m => statConsumption.some(c=>c.month===m), scMonth, m=>{ scMonth = m; renderStatConsumption(); });
+  renderTabBar('scSubTabs', ['Entries','Status'], scSubTab.charAt(0).toUpperCase()+scSubTab.slice(1), null,
+    l=>{ scSubTab = l.toLowerCase(); renderStatConsumption(); });
+
+  document.getElementById('scEntriesView').style.display = scSubTab==='entries' ? 'block' : 'none';
+  document.getElementById('scStatusView').style.display = scSubTab==='status' ? 'block' : 'none';
+  document.getElementById('scMonthLabel').textContent = MONTHS[scMonth];
+
+  if(scSubTab==='entries'){
+    const rows = statConsumption.filter(c=>c.month===scMonth);
+    document.getElementById('scCount').textContent = rows.length;
+    document.getElementById('scEmpty').style.display = rows.length ? 'none' : 'block';
+    document.getElementById('scTableBody').innerHTML = rows.slice().reverse().map(c => {
+      const itemLabel = c.item + (c.color?` (${c.color})`:'');
+      return `<tr><td>${c.date||'—'}</td><td>${itemLabel}</td>
+      <td><span class="wing-dot" style="--dot:${wingColor(c.wing)}">${c.wing}</span></td>
+      <td class="num">${fmt(c.qty)}</td><td>${c.issuedTo||'—'}</td><td></td><td>${c.note||'—'}</td>
+      <td><button class="del-btn" onclick="deleteStatConsEntry('${c.id}')">Delete</button></td></tr>`;
+    }).join('');
+  } else {
+    document.getElementById('scStatusMonthLabel').textContent = MONTHS[scMonth];
+    document.getElementById('scStatusLedgerWrap').innerHTML = itemLedgerHTML(scMonth);
+  }
+}
+
+function deleteRimEntry(id){
+  const rec = rimConsumption.find(r=>r.id===id);
+  if(!rec) return;
+  if(!confirm(`Delete this entry?\n\n${rec.wing} — ${rec.category}\n${fmt(rec.sheets)} sheets${rec.date?' on '+rec.date:''}`)) return;
+  rimConsumption = rimConsumption.filter(r=>r.id!==id);
+  renderRimConsumption(); renderOverview();
+}
+function deleteStatConsEntry(id){
+  const rec = statConsumption.find(r=>r.id===id);
+  if(!rec) return;
+  if(!confirm(`Delete this entry?\n\n${rec.item}${rec.color?' ('+rec.color+')':''} — ${rec.wing}\n${fmt(rec.qty)} issued${rec.issuedTo?' to '+rec.issuedTo:''}${rec.date?' on '+rec.date:''}`)) return;
+  statConsumption = statConsumption.filter(r=>r.id!==id);
+  renderStatConsumption(); renderOverview();
+}
+
+function renderAll(){
+  renderOverview(); renderRimPurchase(); renderRimConsumption(); renderStatPurchase(); renderStatConsumption();
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+const titles = {
+  overview:['Dashboard','Overview of paper & stationery usage'],
+  rimPurchase:['Paper Rim Purchasing Record','Log every rim / sheet purchase, by month'],
+  rimConsumption:['Paper Rim Consumption','Sheets used, by wing and category, by month'],
+  statPurchase:['Stationery Purchasing Detail','Log stationery bought, by month'],
+  statConsumption:['Stationery Consumption Detail','Items issued to each wing, by month']
+};
+function switchView(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.view===view));
+  document.getElementById('pageTitle').textContent = titles[view][0];
+  document.getElementById('pageSub').textContent = titles[view][1];
+  document.getElementById('sidebar').classList.remove('mobile-open');
+}
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click', ()=>switchView(item.dataset.view));
+});
+document.getElementById('collapseBtn').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+document.getElementById('mobileBurger').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('mobile-open');
+});
+
+document.querySelectorAll('.theme-dot').forEach(dot=>{
+  dot.addEventListener('click', ()=>{
+    document.documentElement.setAttribute('data-theme', dot.dataset.t);
+    document.querySelectorAll('.theme-dot').forEach(d=>d.classList.remove('active'));
+    dot.classList.add('active');
+  });
+});
+document.querySelector('.theme-dot[data-t="indigo"]').classList.add('active');
+document.getElementById('sidebarLogo').src = SCHOOL_LOGO_B64;
+
+const dashMonthSelect = document.getElementById('dashMonthSelect');
+populateSelect(dashMonthSelect, MONTHS);
+dashMonthSelect.value = MONTHS[dashMonth];
+dashMonthSelect.addEventListener('change', ()=>{ dashMonth = MONTHS.indexOf(dashMonthSelect.value); renderOverview(); });
+
+/* =========================================================
+   FORM SETUP
+   ========================================================= */
+populateSelect(document.getElementById('rpCategory'), RIM_CATEGORIES);
+populateSelect(document.getElementById('rpWing'), WINGS, 'Central / Unassigned');
+populateSelect(document.getElementById('rcFormCategory'), PAPER_CATEGORIES);
+populateSelect(document.getElementById('rcFormWing'), WINGS);
+populateSelect(document.getElementById('spItem'), STATIONERY_ITEMS.map(i=>i.name));
+populateSelect(document.getElementById('spWing'), WINGS, 'Central / Unassigned');
+populateSelect(document.getElementById('scWing'), WINGS);
+populateSelect(document.getElementById('scItem'), STATIONERY_ITEMS.map(i=>i.name));
+document.getElementById('spItem').addEventListener('change', updateSpItemFields);
+document.getElementById('scItem').addEventListener('change', updateScItemFields);
+updateSpItemFields(); updateScItemFields();
+
+document.getElementById('formRimPurchase').addEventListener('submit', e=>{
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const category = f.get('category');
+  const fileInput = document.getElementById('rpBill');
+  const file = fileInput.files[0];
+  function pushRecord(billData){
+    rimPurchases.push({month:rpMonth, date:f.get('date'), category, wing:f.get('wing'),
+      qty:Number(f.get('qty')), unit:RIM_UNITS[category], rate:Number(f.get('rate')), ref:f.get('ref'), bill:billData||''});
+    e.target.reset();
+    renderRimPurchase(); renderOverview();
+  }
+  if(file){
+    const reader = new FileReader();
+    reader.onload = ()=> pushRecord(reader.result);
+    reader.readAsDataURL(file);
+  } else {
+    pushRecord('');
+  }
+});
+
+document.getElementById('formRimConsumption').addEventListener('submit', e=>{
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const wing = f.get('wing');
+  rimConsumption.push({id:newId(), month:rcMonth, wing, category:f.get('category'), sheets:Number(f.get('sheets')), date:f.get('date')});
+  e.target.reset();
+  // jump the display to the wing the entry was just filed under
+  rcWing = wing;
+  renderRimConsumption(); renderOverview();
+});
+
+document.getElementById('formStatPurchase').addEventListener('submit', e=>{
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const fileInput = document.getElementById('spBill');
+  const file = fileInput.files[0];
+  function pushRecord(billData){
+    statPurchases.push({id:newId(), month:spMonth, date:f.get('date'), item:f.get('item'), color:f.get('color')||'', size:f.get('size')||'',
+      wing:f.get('wing'), qty:Number(f.get('qty')), unit:f.get('unit'), rate:Number(f.get('rate')), supplier:f.get('supplier'), bill:billData||''});
+    e.target.reset(); updateSpItemFields();
+    renderStatPurchase(); renderOverview();
+  }
+  if(file){
+    const reader = new FileReader();
+    reader.onload = ()=> pushRecord(reader.result);
+    reader.readAsDataURL(file);
+  } else {
+    pushRecord('');
+  }
+});
+
+document.getElementById('formStatConsumption').addEventListener('submit', e=>{
+  e.preventDefault();
+  const f = new FormData(e.target);
+  statConsumption.push({id:newId(), month:scMonth, wing:f.get('wing'), item:f.get('item'), color:f.get('color')||'',
+    qty:Number(f.get('qty')), date:f.get('date'), issuedTo:f.get('issuedTo'), note:f.get('note')});
+  e.target.reset(); updateScItemFields();
+  renderStatConsumption(); renderOverview();
+});
+
+/* =========================================================
+   PDF EXPORTS (print-ready, one page per wing / summary)
+   ========================================================= */
+function pdfHeader(doc, title, subtitle){
+  const pageW = doc.internal.pageSize.getWidth();
+  try{ doc.addImage(SCHOOL_LOGO_B64, 'PNG', 14, 10, 16, 16); }catch(e){}
+  doc.setFont(undefined, 'bold');
+  doc.setFontSize(13); doc.setTextColor(20,25,50);
+  doc.text('ARMY PUBLIC SCHOOL & COLLEGE', 34, 16);
+  doc.setFontSize(10.5);
+  doc.text('RYK CITY CAMPUS', 34, 22);
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(10.5); doc.setTextColor(70,75,100);
+  doc.text(title, 34, 28.5);
+  doc.setFontSize(9); doc.setTextColor(120,125,145);
+  doc.text(subtitle, 34, 33.5);
+  doc.setDrawColor(220,222,232); doc.line(14, 38, pageW-14, 38);
+  doc.setTextColor(20,25,50);
+}
+function downloadRimPurchasePdf(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Paper Rim Purchasing Record', `Month: ${MONTHS[rpMonth]}`);
+  const rows = rimPurchases.filter(p=>p.month===rpMonth).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const body = rows.map(p => [p.date||'—', p.category, p.wing||'Central', fmt(p.qty), p.unit, rs(p.rate), rs(p.qty*p.rate), p.ref||'—']);
+  const total = rows.reduce((s,p)=>s+Number(p.qty)*Number(p.rate),0);
+  body.push(['Total','', '', '', '', '', rs(total), '']);
+  doc.autoTable({
+    startY:44,
+    head:[['Date','Category','Wing','Qty','Unit','Rate','Amount','Ref']],
+    body: body.length ? body : [['—','—','—','—','—','—','—','—']],
+    styles:{fontSize:9, cellPadding:3},
+    headStyles:{fillColor:[27,33,64], textColor:255, fontStyle:'bold', halign:'center'},
+    alternateRowStyles:{fillColor:[245,246,250]},
+    columnStyles:{3:{halign:'right'}, 5:{halign:'right'}, 6:{halign:'right'}},
+    didParseCell: hd => {
+      if(hd.section==='body' && hd.row.index === body.length-1) hd.cell.styles.fontStyle = 'bold';
+    }
+  });
+  doc.save(`rim-purchases-${MONTHS[rpMonth]}.pdf`);
+}
+function downloadStatPurchasePdf(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Stationery Purchasing Detail', `Month: ${MONTHS[spMonth]}`);
+  const rows = statPurchases.filter(p=>p.month===spMonth).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const body = rows.map(p => [p.date||'—', p.item+(p.color?' ('+p.color+')':'')+(p.size?' — '+p.size:''), p.wing||'Central', fmt(p.qty), p.unit, rs(p.rate), rs(p.qty*p.rate), p.supplier||'—']);
+  const total = rows.reduce((s,p)=>s+Number(p.qty)*Number(p.rate),0);
+  body.push(['Total','', '', '', '', '', rs(total), '']);
+  doc.autoTable({
+    startY:44,
+    head:[['Date','Item','Wing','Qty','Unit','Rate','Amount','Supplier']],
+    body: body.length ? body : [['—','—','—','—','—','—','—','—']],
+    styles:{fontSize:9, cellPadding:3},
+    headStyles:{fillColor:[27,33,64], textColor:255, fontStyle:'bold', halign:'center'},
+    alternateRowStyles:{fillColor:[245,246,250]},
+    columnStyles:{3:{halign:'right'}, 5:{halign:'right'}, 6:{halign:'right'}},
+    didParseCell: hd => {
+      if(hd.section==='body' && hd.row.index === body.length-1) hd.cell.styles.fontStyle = 'bold';
+    }
+  });
+  doc.save(`stationery-purchases-${MONTHS[spMonth]}.pdf`);
+}
+function rimWingPdfBody(wing, month){
+  // Same rows the on-screen wing tab shows: every entry, date-wise, plus a total
+  const rows = rimConsumption.filter(c=>c.wing===wing && c.month===month)
+    .slice().sort((x,y)=>(x.date||'').localeCompare(y.date||''));
+  const body = rows.map(c => [c.date||'—', c.category, fmt(c.sheets), fmt(copies(c.sheets)), fmt(reams(c.sheets))]);
+  const total = rows.reduce((s,c)=>s+Number(c.sheets),0);
+  body.push(['Total','', fmt(total), fmt(copies(total)), fmt(reams(total))]);
+  return body;
+}
+function rimMatrixPdf(month){
+  // Same table the "All Wings" tab shows: wings x categories, with totals
+  const monthRows = rimConsumption.filter(c=>c.month===month);
+  const colTotals = PAPER_CATEGORIES.map(()=>0);
+  const body = WINGS.map(w=>{
+    const vals = PAPER_CATEGORIES.map((cat,i)=>{
+      const v = monthRows.filter(r=>r.wing===w && r.category===cat).reduce((s,r)=>s+Number(r.sheets),0);
+      colTotals[i]+=v; return v;
+    });
+    const total = vals.reduce((x,y)=>x+y,0);
+    return [w, ...vals.map(v=>v?fmt(v):'—'), fmt(total), fmt(copies(total)), fmt(reams(total))];
+  });
+  const grand = colTotals.reduce((x,y)=>x+y,0);
+  body.push(['Total', ...colTotals.map(v=>fmt(v)), fmt(grand), fmt(copies(grand)), fmt(reams(grand))]);
+  return {
+    head: [['Wing', ...PAPER_CATEGORIES, 'Total Sheets', 'Total Copies', 'Total Reams']],
+    body
+  };
+}
+function openPrintDialog(){
+  const pm = document.getElementById('printMonth');
+  const pw = document.getElementById('printWing');
+  populateSelect(pm, MONTHS);
+  pm.value = MONTHS[rcMonth];
+  pw.innerHTML = '<option value="__ALL__">All wings (summary table)</option>' +
+    WINGS.map(w=>`<option value="${w}">${w}</option>`).join('');
+  pw.value = (rcWing === 'All Wings') ? '__ALL__' : rcWing;
+  document.getElementById('printOverlay').style.display = 'flex';
+}
+function closePrintDialog(){ document.getElementById('printOverlay').style.display = 'none'; }
+function runPrintDownload(){
+  const month = MONTHS.indexOf(document.getElementById('printMonth').value);
+  const wingSel = document.getElementById('printWing').value;
+  const { jsPDF } = window.jspdf;
+
+  if(wingSel === '__ALL__'){
+    // One landscape page carrying the same matrix the All Wings tab shows
+    const doc = new jsPDF({orientation:'landscape'});
+    pdfHeader(doc, 'Paper Rim Consumption — All Wings', `Month: ${MONTHS[month]}`);
+    const t = rimMatrixPdf(month);
+    doc.autoTable({
+      startY:44, head:t.head, body:t.body,
+      styles:{fontSize:6.4, cellPadding:1.6, overflow:'linebreak'},
+      headStyles:{fillColor:[27,33,64], textColor:255, fontStyle:'bold', halign:'center', fontSize:6.2},
+      alternateRowStyles:{fillColor:[245,246,250]},
+      columnStyles:{0:{cellWidth:20, fontStyle:'bold', halign:'left'}},
+      didParseCell: hd => {
+        if(hd.section==='body' && hd.column.index>0) hd.cell.styles.halign = 'right';
+        if(hd.section==='body' && hd.row.index === t.body.length-1) hd.cell.styles.fontStyle = 'bold';
+      }
+    });
+    doc.save(`all-wings-${MONTHS[month]}-consumption.pdf`);
+  } else {
+    const doc = new jsPDF();
+    pdfHeader(doc, 'Paper Rim Consumption', `Wing: ${wingSel}     Month: ${MONTHS[month]}`);
+    const body = rimWingPdfBody(wingSel, month);
+    doc.autoTable({
+      startY:44,
+      head:[['Date','Category','Sheets','Copies','Reams']],
+      body,
+      styles:{fontSize:9.5, cellPadding:3},
+      headStyles:{fillColor:[27,33,64], textColor:255, fontStyle:'bold', halign:'center'},
+      alternateRowStyles:{fillColor:[245,246,250]},
+      columnStyles:{2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right'}},
+      didParseCell: hd => {
+        if(hd.section==='body' && hd.row.index === body.length-1) hd.cell.styles.fontStyle = 'bold';
+      }
+    });
+    doc.save(`${wingSel.replace(/\s+/g,'-')}-${MONTHS[month]}-consumption.pdf`);
+  }
+  closePrintDialog();
+}
+
+function openStatConsPrintDialog(){
+  const pm = document.getElementById('scPrintMonth');
+  populateSelect(pm, MONTHS);
+  pm.value = MONTHS[scMonth];
+  document.getElementById('scPrintOverlay').style.display = 'flex';
+}
+function closeStatConsPrintDialog(){ document.getElementById('scPrintOverlay').style.display = 'none'; }
+function runStatConsPrintDownload(){
+  const month = MONTHS.indexOf(document.getElementById('scPrintMonth').value);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Stationery Consumption Detail', `Month: ${MONTHS[month]}`);
+  const rows = statConsumption.filter(c=>c.month===month).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const body = rows.map(c => [c.date||'—', c.item+(c.color?' ('+c.color+')':''), c.wing, fmt(c.qty), c.issuedTo||'—', '', c.note||'—']);
+  doc.autoTable({
+    startY:44,
+    head:[['Date','Item detail','Wing','Qty','Issued to','Signature','Remarks']],
+    body: body.length ? body : [['—','—','—','—','—','','—']],
+    styles:{fontSize:9, cellPadding:3},
+    headStyles:{fillColor:[27,33,64], textColor:255, fontStyle:'bold', halign:'center'},
+    alternateRowStyles:{fillColor:[245,246,250]},
+    columnStyles:{3:{halign:'right'}, 5:{cellWidth:26}}
+  });
+  doc.save(`stationery-consumption-${MONTHS[month]}.pdf`);
+  closeStatConsPrintDialog();
+}
+
+/* =========================================================
+   CSV EXPORTS
+   ========================================================= */
+function downloadCSV(filename, rows){
+  const csv = rows.map(r => r.map(c => `"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function exportSummaryCSV(){
+  const m = MONTHS[dashMonth];
+  const rows = [['Wing-wise Summary', m], [], ['Wing','Opening (Reams)','Purchased','Consumed','Balance','Cost']];
+  paperWingTableRows(dashMonth).forEach(r=>{
+    rows.push([r.w, r.opening.toFixed(2), r.purchased.toFixed(2), r.consumed.toFixed(2), r.balance.toFixed(2), r.cost.toFixed(0)]);
+  });
+  downloadCSV(`monthly-report-${m}.csv`, rows);
+}
+function exportAllCSV(){
+  const rows = [['RIM PURCHASES'], ['Month','Date','Category','Wing','Qty','Unit','Rate','Amount','Ref']];
+  rimPurchases.forEach(p=>rows.push([MONTHS[p.month],p.date,p.category,p.wing,p.qty,p.unit,p.rate,p.qty*p.rate,p.ref]));
+  rows.push([],['RIM CONSUMPTION'],['Month','Date','Wing','Category','Sheets','Copies','Reams']);
+  rimConsumption.forEach(c=>rows.push([MONTHS[c.month],c.date,c.wing,c.category,c.sheets,copies(c.sheets),reams(c.sheets).toFixed(2)]));
+  rows.push([],['STATIONERY PURCHASES'],['Month','Date','Item','Color','Size','Wing','Qty','Unit','Rate','Amount','Supplier']);
+  statPurchases.forEach(p=>rows.push([MONTHS[p.month],p.date,p.item,p.color,p.size,p.wing,p.qty,p.unit,p.rate,p.qty*p.rate,p.supplier]));
+  rows.push([],['STATIONERY CONSUMPTION'],['Month','Date','Wing','Item','Color','Qty','Issued To','Cost','Remarks']);
+  statConsumption.forEach(c=>rows.push([MONTHS[c.month],c.date,c.wing,c.item,c.color,c.qty,c.issuedTo,(c.qty*itemAvgRate(c.item)).toFixed(0),c.note]));
+  downloadCSV('full-export.csv', rows);
+}
+
+/* Initial paint */
+renderAll();
+
+</script>
+</body>
+</html>
