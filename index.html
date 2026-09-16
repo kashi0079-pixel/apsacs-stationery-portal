@@ -395,9 +395,15 @@ footer{text-align:center; padding:26px; font-size:11px; color:#9AA0B0;}
             <form class="form-grid" id="formRimConsumption">
               <div class="field"><label>Date</label><input type="date" name="date" required></div>
               <div class="field"><label>Wing</label><select name="wing" id="rcFormWing"></select></div>
-              <div class="field"><label>Category</label><select name="category" id="rcFormCategory"></select></div>
-              <div class="field" id="rcOtherCategoryWrap" style="display:none;"><label>Specify category</label><input type="text" id="rcOtherCategory" placeholder="e.g. Annual Function Cards"></div>
-              <div class="field"><label>Sheets used</label><input type="number" name="sheets" min="1" required></div>
+              <div class="field"><label>Item detail</label><select name="category" id="rcFormCategory"></select></div>
+              <div class="field" id="rcOtherCategoryWrap" style="display:none;"><label>Specify item</label><input type="text" id="rcOtherCategory" placeholder="e.g. Annual Function Cards"></div>
+              <div class="field"><label>Class</label><input type="text" name="klass" placeholder="e.g. 9th"></div>
+              <div class="field"><label>Section</label><input type="text" name="section" placeholder="e.g. A"></div>
+              <div class="field"><label>No. of sets</label><input type="number" name="noOfSets" id="rcNoOfSets" min="1" required></div>
+              <div class="field"><label>Sheets (per set)</label><input type="number" name="sheetsPerSet" id="rcSheetsPerSet" min="1" required></div>
+              <div class="field"><label>Total sheets</label><input type="text" id="rcTotalSheetsPreview" readonly style="background:#F4F5FA; font-weight:700;" value="0"></div>
+              <div class="field"><label>Total copies</label><input type="text" id="rcTotalCopiesPreview" readonly style="background:#F4F5FA; font-weight:700;" value="0"></div>
+              <div class="field"><label>Handover to</label><input type="text" name="handoverTo" placeholder="name of recipient"></div>
               <div class="field"><button class="btn" type="submit">Add entry</button></div>
             </form>
           </div>
@@ -412,7 +418,7 @@ footer{text-align:center; padding:26px; font-size:11px; color:#9AA0B0;}
             <div id="rcAllWingsWrap" class="table-scroll"></div>
             <div id="rcSingleWingWrap">
               <div class="table-scroll"><table>
-                <thead><tr><th>Date</th><th>Category</th><th class="num">Sheets</th><th class="num">Copies</th><th class="num">Reams</th><th></th></tr></thead>
+                <thead><tr><th>Date</th><th>Item detail</th><th>Class</th><th>Section</th><th class="num">No. of sets</th><th class="num">Sheets</th><th class="num">Total Sheets</th><th class="num">Total Copies</th><th>Handover to</th><th>Signature</th><th></th></tr></thead>
                 <tbody id="rcWingTableBody"></tbody>
               </table></div>
               <div id="rcWingEmpty" class="empty-state" style="display:none;"><div class="glyph">&#128203;</div><p>No entries for this wing yet this month.</p></div>
@@ -705,7 +711,9 @@ function loadFromBackend(){
       qty:Number(r.Qty), unit:r.Unit, rate:Number(r.Rate), ref:r.Ref, bill:r.BillURL||''
     }));
     rimConsumption = data.rim.filter(r=>r.Type==='Consumption').map(r=>({
-      id:r.ID, month:Number(r.Month), date:r.Date, category:r.Category, wing:r.Wing, sheets:Number(r.Qty)
+      id:r.ID, month:Number(r.Month), date:r.Date, category:r.Category, wing:r.Wing, sheets:Number(r.Qty),
+      klass:r.Class||'', section:r.Section||'', noOfSets:Number(r.NoOfSets)||0, sheetsPerSet:Number(r.SheetsPerSet)||0,
+      handoverTo:r.HandoverTo||''
     }));
     statPurchases = data.stat.filter(r=>r.Type==='Purchase').map(r=>({
       id:r.ID, month:Number(r.Month), date:r.Date, item:r.Item, color:r.Color, size:r.Size, wing:r.Wing,
@@ -1099,12 +1107,13 @@ function renderRimConsumption(){
     document.getElementById('rcWingEmpty').style.display = rows.length ? 'none' : 'block';
     const wingTotal = rows.reduce((s,c)=>s+Number(c.sheets),0);
     document.getElementById('rcWingTableBody').innerHTML = rows.slice().reverse().map(c => `
-      <tr><td>${c.date||'—'}</td><td>${c.category}</td>
+      <tr><td>${c.date||'—'}</td><td>${c.category}</td><td>${c.klass||'—'}</td><td>${c.section||'—'}</td>
+      <td class="num">${fmt(c.noOfSets||0)}</td><td class="num">${fmt(c.sheetsPerSet||0)}</td>
       <td class="num">${fmt(c.sheets)}</td><td class="num">${fmt(copies(c.sheets))}</td>
-      <td class="num">${fmt(reams(c.sheets))}</td>
+      <td>${c.handoverTo||'—'}</td><td></td>
       <td><button class="del-btn" onclick="deleteRimEntry('${c.id}')">Delete</button></td></tr>`).join('') +
-      (rows.length ? `<tr><td>Total</td><td></td><td class="num">${fmt(wingTotal)}</td>
-        <td class="num">${fmt(copies(wingTotal))}</td><td class="num">${fmt(reams(wingTotal))}</td><td></td></tr>` : '');
+      (rows.length ? `<tr><td>Total</td><td></td><td></td><td></td><td></td><td></td>
+        <td class="num">${fmt(wingTotal)}</td><td class="num">${fmt(copies(wingTotal))}</td><td></td><td></td><td></td></tr>` : '');
   }
 }
 function renderRcMatrix(){
@@ -1289,6 +1298,15 @@ document.getElementById('rcFormCategory').addEventListener('change', e=>{
   document.getElementById('rcOtherCategoryWrap').style.display = (e.target.value === 'Other') ? '' : 'none';
 });
 populateSelect(document.getElementById('rcFormWing'), WINGS);
+function updateRcTotalsPreview(){
+  const n = Number(document.getElementById('rcNoOfSets').value) || 0;
+  const s = Number(document.getElementById('rcSheetsPerSet').value) || 0;
+  const total = n * s;
+  document.getElementById('rcTotalSheetsPreview').value = fmt(total);
+  document.getElementById('rcTotalCopiesPreview').value = fmt(total * COPIES_PER_SHEET);
+}
+document.getElementById('rcNoOfSets').addEventListener('input', updateRcTotalsPreview);
+document.getElementById('rcSheetsPerSet').addEventListener('input', updateRcTotalsPreview);
 populateSelect(document.getElementById('spItem'), STATIONERY_ITEMS.map(i=>i.name));
 populateSelect(document.getElementById('spWing'), WINGS, 'Central / Unassigned');
 populateSelect(document.getElementById('scWing'), WINGS);
@@ -1338,15 +1356,21 @@ document.getElementById('formRimConsumption').addEventListener('submit', e=>{
   if(category === 'Other'){
     category = (document.getElementById('rcOtherCategory').value || '').trim() || 'Other';
   }
-  const rec = {id:newId(), month:rcMonth, wing, category, sheets:Number(f.get('sheets')), date:f.get('date')};
+  const noOfSets = Number(f.get('noOfSets')) || 0;
+  const sheetsPerSet = Number(f.get('sheetsPerSet')) || 0;
+  const totalSheets = noOfSets * sheetsPerSet;
+  const rec = {id:newId(), month:rcMonth, wing, category, klass:f.get('klass'), section:f.get('section'),
+    noOfSets, sheetsPerSet, sheets:totalSheets, handoverTo:f.get('handoverTo'), date:f.get('date')};
   rimConsumption.push(rec);
   e.target.reset();
   document.getElementById('rcOtherCategoryWrap').style.display = 'none';
+  updateRcTotalsPreview();
   // jump the display to the wing the entry was just filed under
   rcWing = wing;
   saveEntryToBackend('rim', rec, {
     ID:rec.id, Type:'Consumption', Month:rec.month, Date:rec.date, Category:rec.category,
-    Wing:rec.wing, Qty:rec.sheets, Unit:'sheets', Rate:'', Ref:''
+    Wing:rec.wing, Qty:rec.sheets, Unit:'sheets', Rate:'', Ref:'',
+    Class:rec.klass, Section:rec.section, NoOfSets:rec.noOfSets, SheetsPerSet:rec.sheetsPerSet, HandoverTo:rec.handoverTo
   });
   renderRimConsumption(); renderOverview();
 });
@@ -1457,9 +1481,10 @@ function rimWingPdfBody(wing, month){
   // Same rows the on-screen wing tab shows: every entry, date-wise, plus a total
   const rows = rimConsumption.filter(c=>c.wing===wing && c.month===month)
     .slice().sort((x,y)=>(x.date||'').localeCompare(y.date||''));
-  const body = rows.map(c => [c.date||'—', c.category, fmt(c.sheets), fmt(copies(c.sheets)), fmt(reams(c.sheets))]);
+  const body = rows.map(c => [c.date||'—', c.category, c.klass||'—', c.section||'—',
+    fmt(c.noOfSets||0), fmt(c.sheetsPerSet||0), fmt(c.sheets), fmt(copies(c.sheets)), c.handoverTo||'—', '']);
   const total = rows.reduce((s,c)=>s+Number(c.sheets),0);
-  body.push(['Total','', fmt(total), fmt(copies(total)), fmt(reams(total))]);
+  body.push(['Total','','','','','', fmt(total), fmt(copies(total)), '', '']);
   return body;
 }
 function rimMatrixPdf(month){
@@ -1515,17 +1540,17 @@ function runPrintDownload(){
     });
     doc.save(`all-wings-${MONTHS[month]}-consumption.pdf`);
   } else {
-    const doc = new jsPDF();
+    const doc = new jsPDF({orientation:'landscape'});
     pdfHeader(doc, 'Paper Rim Consumption', `Wing: ${wingSel}     Month: ${MONTHS[month]}`);
     const body = rimWingPdfBody(wingSel, month);
     doc.autoTable({
       startY:44,
-      head:[['Date','Category','Sheets','Copies','Reams']],
+      head:[['Date','Item detail','Class','Section','No. of sets','Sheets','Total Sheets','Total Copies','Handover to','Signature']],
       body,
-      styles:{fontSize:9.5, cellPadding:3},
+      styles:{fontSize:9, cellPadding:3},
       headStyles:{fillColor:[27,33,64], textColor:255, fontStyle:'bold', halign:'center'},
       alternateRowStyles:{fillColor:[245,246,250]},
-      columnStyles:{2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right'}},
+      columnStyles:{4:{halign:'right'}, 5:{halign:'right'}, 6:{halign:'right'}, 7:{halign:'right'}, 9:{cellWidth:26}},
       didParseCell: hd => {
         if(hd.section==='body' && hd.row.index === body.length-1) hd.cell.styles.fontStyle = 'bold';
       }
@@ -1583,8 +1608,8 @@ function exportSummaryCSV(){
 function exportAllCSV(){
   const rows = [['RIM PURCHASES'], ['Month','Date','Category','Wing','Qty','Unit','Rate','Amount','Ref']];
   rimPurchases.forEach(p=>rows.push([MONTHS[p.month],p.date,p.category,p.wing,p.qty,p.unit,p.rate,p.qty*p.rate,p.ref]));
-  rows.push([],['RIM CONSUMPTION'],['Month','Date','Wing','Category','Sheets','Copies','Reams']);
-  rimConsumption.forEach(c=>rows.push([MONTHS[c.month],c.date,c.wing,c.category,c.sheets,copies(c.sheets),reams(c.sheets).toFixed(2)]));
+  rows.push([],['RIM CONSUMPTION'],['Month','Date','Wing','Item detail','Class','Section','No. of sets','Sheets (per set)','Total Sheets','Total Copies','Handover To']);
+  rimConsumption.forEach(c=>rows.push([MONTHS[c.month],c.date,c.wing,c.category,c.klass,c.section,c.noOfSets,c.sheetsPerSet,c.sheets,copies(c.sheets),c.handoverTo]));
   rows.push([],['STATIONERY PURCHASES'],['Month','Date','Item','Color','Size','Wing','Qty','Unit','Rate','Amount','Supplier']);
   statPurchases.forEach(p=>rows.push([MONTHS[p.month],p.date,p.item,p.color,p.size,p.wing,p.qty,p.unit,p.rate,p.qty*p.rate,p.supplier]));
   rows.push([],['STATIONERY CONSUMPTION'],['Month','Date','Wing','Item','Color','Qty','Issued To','Cost','Remarks']);
